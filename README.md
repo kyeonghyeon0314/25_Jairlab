@@ -1,4 +1,4 @@
-# ilegal_parking_scooter_dectecion
+# ilegal_parking_scooter_dectection
 ## Reference
 - [LeGO-LOAM](https://github.com/RobustFieldAutonomyLab/LeGO-LOAM)
 - 미정
