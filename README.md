@@ -23,7 +23,7 @@ extern const string fileDirectory = "/tmp/";
 ```
 
 ## pcd 파일 저장
-### /laser_cloud_surround Topic을 활용한 pcd 저장
+###  Topic을 활용한 pcd 저장(/laser_cloud_surround)
 ```
 roslaunch lego_loam run.launch
 rosbag play lidar_5.bag --clock --topic /ouster/points
