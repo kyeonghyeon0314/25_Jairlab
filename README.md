@@ -1,13 +1,13 @@
 # ilegal_parking_scooter_dectecion
 ## Reference
-- [LeGO-LOAM}(https://github.com/RobustFieldAutonomyLab/LeGO-LOAM)
+- [LeGO-LOAM](https://github.com/RobustFieldAutonomyLab/LeGO-LOAM)
 - 미정
 ## Contents
 - mapping
 - Localization
 - Semantic Segmantation
 
-# mapping([LeGO-LOAM}(https://github.com/RobustFieldAutonomyLab/LeGO-LOAM))
+# mapping([LeGO-LOAM](https://github.com/RobustFieldAutonomyLab/LeGO-LOAM))
 맵핑한 후 pcd 파일로 변환하여 저장
 
 ## 진행과정
