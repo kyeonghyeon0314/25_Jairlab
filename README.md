@@ -37,19 +37,50 @@ def mapSave(){
 - **mapping_10.pcd** : 경상대 2호관 에서 법대내리막
 - **mapping_11.pcd** : 공대 공장동 앞 -> 7호관 - > 6호관-> 제2도서관-> 연구실 단지 -> 후생관쪽 문-> 농대길->중도 정문 -> 후생관 -> 경상대 2호관-> 인문대 -> 실크로드 센터 -> 공대 오르막
 
-<p align="center">
-  <img src="/img/map/mapping_01.png" align="center" width="70%">
-  <img src="/img/map/mapping_02.png" align="center" width="70%">
-  <img src="/img/map/mapping_03.png" align="center" width="70%">
-  <img src="/img/map/mapping_04.png" align="center" width="70%">
-  <img src="/img/map/mapping_05.png" align="center" width="70%">
-  <img src="/img/map/mapping_06.png" align="center" width="70%">
-  <img src="/img/map/mapping_07.png" align="center" width="70%">
-  <img src="/img/map/mapping_08.png" align="center" width="70%">
-  <img src="/img/map/mapping_09.png" align="center" width="70%">
-  <img src="/img/map/mapping_10.png" align="center" width="70%">
-  <img src="/img/map/mapping_11.png" align="center" width="70%">
-</p>
-
-
+<div align="center">
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_01.png" width="70%">
+    <p style="text-align: center;">mapping_01</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_02.png" width="70%">
+    <p style="text-align: center;">mapping_02</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_03.png" width="70%">
+    <p style="text-align: center;">mapping_03</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_04.png" width="70%">
+    <p style="text-align: center;">mapping_04</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_05.png" width="70%">
+    <p style="text-align: center;">mapping_05</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_06.png" width="70%">
+    <p style="text-align: center;">mapping_06</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_07.png" width="70%">
+    <p style="text-align: center;">mapping_07</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_08.png" width="70%">
+    <p style="text-align: center;">mapping_08</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_09.png" width="70%">
+    <p style="text-align: center;">mapping_09</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_10.png" width="70%">
+    <p style="text-align: center;">mapping_10</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/mapping_11.png" width="70%">
+    <p style="text-align: center;">mapping_11</p>
+  </div>
+</div>
 
