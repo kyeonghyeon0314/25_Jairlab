@@ -10,7 +10,19 @@
 # mapping([LeGO-LOAM](https://github.com/RobustFieldAutonomyLab/LeGO-LOAM))
 맵핑한 후 pcd 파일로 변환하여 저장
 
-## 진행과정
+## utility.h 수정
+- VLP-16 관련 상수들 주석 처리
+- Ouster OS1-64 주석 해제
+- ```extern const string pointCloudTopic = "/velodyne_points"``` 토픽 ```/ousater/points```로 수정
+### 특이사항
+- LeGO-LOAM에서는 9-DOF IMU가 필요하므로 ouster 기종은 imu/data를 사용할 수 없음
+- pcd 파일을 저장하는 디렉토리 절대 경로를 지정하는 란이 있지만 지정을 하여도 저장되는 모습은 보이지 않아 [다른 방법](##-pcd-파일-저장)을 활용
+```
+// Save pcd
+extern const string fileDirectory = "/tmp/";
+```
+
+## pcd 파일 저장
 ### /laser_cloud_surround Topic을 활용한 pcd 저장
 ```
 roslaunch lego_loam run.launch
