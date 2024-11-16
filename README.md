@@ -36,17 +36,17 @@ def mapSave(){
 - **mapping_09.pcd** : 법대,글로벌 인재관 사이 오르막 오르고난 후 장소 -> 제2도서관 (loop closer 없음)
 - **mapping_10.pcd** : 경상대 2호관 에서 법대내리막
 - **mapping_11.pcd** : 공대 공장동 앞 -> 7호관 - > 6호관-> 제2도서관-> 연구실 단지 -> 후생관쪽 문-> 농대길->중도 정문 -> 후생관 -> 경상대 2호관-> 인문대 -> 실크로드 센터 -> 공대 오르막
-![title](/img/mapping_01.png)
-![title](/img/mapping_02.png)
-![title](/img/mapping_03.png)
-![title](/img/mapping_04.png)
-![title](/img/mapping_05.png)
-![title](/img/mapping_06.png)
-![title](/img/mapping_07.png)
-![title](/img/mapping_08.png)
-![title](/img/mapping_09.png)
-![title](/img/mapping_10.png)
-![title](/img/mapping_11.png)
+![title](/img/map/mapping_01.png)
+![title](/img/map/mapping_02.png)
+![title](/img/map/mapping_03.png)
+![title](/img/map/mapping_04.png)
+![title](/img/map/mapping_05.png)
+![title](/img/map/mapping_06.png)
+![title](/img/map/mapping_07.png)
+![title](/img/map/mapping_08.png)
+![title](/img/map/mapping_09.png)
+![title](/img/map/mapping_10.png)
+![title](/img/map/mapping_11.png)
 
 
 
