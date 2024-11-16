@@ -28,7 +28,7 @@ extern const string fileDirectory = "/tmp/";
 roslaunch lego_loam run.launch
 rosbag play lidar_5.bag --clock --topic /ouster/points
 rosbag record -O mapping_data.bag /laser_cloud_surround
-rosrun pcl_ros bag_to_pcd mapping_data.bag /laser_cloud_surround  # 마지막으로 저장되는 pcd 파일이 전체 map
+rosrun pcl_ros bag_to_pcd mapping_data.bag /laser_cloud_surround pcd # 마지막으로 저장되는 pcd 파일이 전체 map
 ```
 ### 코드 수정을 통한 pcd 저장(mapOptmization.cpp 의 public에 추가)
 ```
