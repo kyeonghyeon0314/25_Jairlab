@@ -16,7 +16,7 @@
 - ```extern const string pointCloudTopic = "/velodyne_points"``` 토픽 ```/ousater/points```로 수정
 ### 특이사항
 - LeGO-LOAM에서는 9-DOF IMU가 필요하므로 ouster 기종은 imu/data를 사용할 수 없음
-- pcd 파일을 저장하는 디렉토리 절대 경로를 지정하는 란이 있지만 지정을 하여도 저장되는 모습은 보이지 않아 [다른 방법](##-pcd-파일-저장)을 활용
+- pcd 파일을 저장하는 디렉토리 절대 경로를 지정하는 란이 있지만 지정을 하여도 저장되는 모습은 보이지 않아 [다른 방법](##pcd-파일-저장)을 활용
 ```
 // Save pcd
 extern const string fileDirectory = "/tmp/";
