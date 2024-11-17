@@ -96,3 +96,16 @@ def mapSave(){
   </div>
 </div>
 
+### 특이사항
+- 후생관 앞 교차로 부분이 만나지 않음 (각자 따로 진행을 해보았지만 동일한 증상이 발생)
+- 후생관 앞 교차로에서 잘못 mapping 되면서 경상대 2호관 까지 가는 길이 7호관 건물을 가로 질러가는 문제가 발생
+<div align="center">
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/11_error_2.png" width="70%">
+    <p style="text-align: center;">교차로 부분</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/map/11_error_1.png" width="70%">
+    <p style="text-align: center;">7호관과 윗길</p>
+  </div>
+</div>
