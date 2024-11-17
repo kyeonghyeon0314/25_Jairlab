@@ -30,11 +30,24 @@ rosbag play lidar_5.bag --clock --topic /ouster/points
 rosbag record -O mapping_data.bag /laser_cloud_surround
 rosrun pcl_ros bag_to_pcd mapping_data.bag /laser_cloud_surround pcd # 마지막으로 저장되는 pcd 파일이 전체 map
 ```
-### 코드 수정을 통한 pcd 저장(mapOptmization.cpp 의 public에 추가)
+### 코드 수정을 통한 pcd 저장(mapOptmization.cpp 의 visualizeGlobalMapThread 수정)
 ```
-def mapSave(){
+void visualizeGlobalMapThread(){
+	/* 기존 코드 */
 
-}
+        globalMapKeyFramesDS->clear();
+        globalMapKeyFramesDS +=cornerMapCloudDS;
+        globalMapKeyFramesDS +=surfaceMapCloudDS;
+
+        pcl::io::savePCDFileASCII(fileDirectory+"cornerMap.pcd", cornerMapCloudDS);
+        pcl::io::savePCDFileASCII(fileDirectory+"surfaceMap.pcd",surfaceMapCloudDS);
+        pcl::io::savePCDFileASCII(fileDirectory+"trajectory.pcd", cloudKeyPoses3D);
+        pcl::io::savePCDFileASCII(fileDirectory+"finalCloud.pcd",globalMapKeyFramesDS);
+    }
+```
+utility.h 파일 수정
+```
+fieDirectory = "\tmp\"		// 원하는 경로로 수정
 ```
 
 ## 맵 정보
