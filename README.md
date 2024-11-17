@@ -13,7 +13,7 @@
 ## utility.h 수정
 - VLP-16 관련 상수들 주석 처리
 - Ouster OS1-64 주석 해제
-- ```extern const string pointCloudTopic = "/velodyne_points"``` 토픽 ```/ousater/points```로 수정
+- ```extern const string pointCloudTopic = "/velodyne_points"``` 토픽 ```/ouster/points```로 수정
 ### 특이사항
 - LeGO-LOAM에서는 9-DOF IMU가 필요하므로 ouster 기종은 imu/data를 사용할 수 없음
 - pcd 파일을 저장하는 디렉토리 절대 경로를 지정하는 란이 있지만 지정을 하여도 저장되는 모습은 보이지 않아 [다른 방법](#pcd-파일-저장)을 활용
@@ -97,8 +97,8 @@ def mapSave(){
 </div>
 
 ### 특이사항
-- 후생관 앞 교차로 부분이 만나지 않음 (각자 따로 진행을 해보았지만 동일한 증상이 발생)
-- 후생관 앞 교차로에서 잘못 mapping 되면서 경상대 2호관 까지 가는 길이 7호관 건물을 가로 질러가는 문제가 발생
+- **mapping_11**에서 후생관 앞 교차로 부분이 만나지 않음 (각자 따로 진행을 해보았지만 동일한 증상이 발생)
+- **mapping_11**에서 후생관 앞 교차로에서 잘못 mapping 되면서 경상대 2호관 까지 가는 길이 7호관 건물을 가로 질러가는 문제가 발생
 <div align="center">
   <div style="margin-bottom: 10px;">
     <img src="/img/map/11_error_2.png" width="70%">
