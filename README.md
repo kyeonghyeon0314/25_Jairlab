@@ -23,7 +23,7 @@ extern const string fileDirectory = "/tmp/";
 ```
 
 ## pcd 파일 저장
-pcd 파일 저장은 lego-loam 상에서 ```computer/tmp/``` 디렉토리안에 자동으로 저장되는것을 확인하였습니다. ```home/user```디렉토리가 아닌 ```/```(최상위 디렉토리)의 ```tmp``디렉토리 안에 저장이 되는 것을 확인 하였습니다. ```utility.h```안에 fileDirctory는 수정하지 않도록 합니다.
+pcd 파일 저장은 lego-loam 상에서 ```computer/tmp/``` 디렉토리안에 자동으로 저장되는것을 확인하였습니다. ```home/user``` 디렉토리가 아닌 ``` / ``` (최상위 디렉토리)의 ```tmp```디렉토리 안에 저장이 되는 것을 확인 하였습니다. ```utility.h```안에 fileDirctory는 수정하지 않도록 합니다.
 
 <div align="center">
   <div style="margin-bottom: 10px;">
