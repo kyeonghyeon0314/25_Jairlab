@@ -16,38 +16,32 @@
 - ```extern const string pointCloudTopic = "/velodyne_points"``` 토픽 ```/ouster/points```로 수정
 ### 특이사항
 - LeGO-LOAM에서는 9-DOF IMU가 필요하므로 ouster 기종은 imu/data를 사용할 수 없음
-- pcd 파일을 저장하는 디렉토리 절대 경로를 지정하는 란이 있지만 지정을 하여도 저장되는 모습은 보이지 않아 [다른 방법](#pcd-파일-저장)을 활용
+- ~~pcd 파일을 저장하는 디렉토리 절대 경로를 지정하는 란이 있지만 지정을 하여도 저장되는 모습은 보이지 않아 [다른 방법](#pcd-파일-저장)을 활용~~
 ```
 // Save pcd
 extern const string fileDirectory = "/tmp/";
 ```
 
 ## pcd 파일 저장
+pcd 파일 저장은 lego-loam 상에서 ```computer/tmp/``` 디렉토리안에 자동으로 저장되는것을 확인하였습니다. ```home/user```디렉토리가 아닌 ```/```(최상위 디렉토리)의 ```tmp``디렉토리 안에 저장이 되는 것을 확인 하였습니다. ```utility.h```안에 fileDirctory는 수정하지 않도록 합니다.
+
+<div align="center">
+  <div style="margin-bottom: 10px;">
+    <img src="/img/cap/root_directory.png" width="70%">
+    <p style="text-align: center;">최상위 디렉토리</p>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <img src="/img/cap/save_directory.png" width="70%">
+    <p style="text-align: center;">tmp윗길</p>
+  </div>
+</div>
+
 ###  Topic을 활용한 pcd 저장(/laser_cloud_surround)
 ```
 roslaunch lego_loam run.launch
 rosbag play lidar_5.bag --clock --topic /ouster/points
 rosbag record -O mapping_data.bag /laser_cloud_surround
 rosrun pcl_ros bag_to_pcd mapping_data.bag /laser_cloud_surround pcd # 마지막으로 저장되는 pcd 파일이 전체 map
-```
-### 코드 수정을 통한 pcd 저장(mapOptmization.cpp 의 visualizeGlobalMapThread 수정)
-```
-void visualizeGlobalMapThread(){
-	/* 기존 코드 */
-
-        globalMapKeyFramesDS->clear();
-        globalMapKeyFramesDS +=cornerMapCloudDS;
-        globalMapKeyFramesDS +=surfaceMapCloudDS;
-
-        pcl::io::savePCDFileASCII(fileDirectory+"cornerMap.pcd", cornerMapCloudDS);
-        pcl::io::savePCDFileASCII(fileDirectory+"surfaceMap.pcd",surfaceMapCloudDS);
-        pcl::io::savePCDFileASCII(fileDirectory+"trajectory.pcd", cloudKeyPoses3D);
-        pcl::io::savePCDFileASCII(fileDirectory+"finalCloud.pcd",globalMapKeyFramesDS);
-    }
-```
-utility.h 파일 수정
-```
-fieDirectory = "\tmp\"		// 원하는 경로로 수정
 ```
 
 ## 맵 정보
@@ -65,6 +59,8 @@ fieDirectory = "\tmp\"		// 원하는 경로로 수정
 
 
 ### 특이사항
+아래와 같은 문제점이 발생을 하는데 이는 Loop Closure 기반으로 설계되어진 LeGO-LOAM 특성상 생기는 문제인것으로 추측 중에 있음
+
 - **mapping_11**에서 후생관 앞 교차로 부분이 만나지 않음 (각자 따로 진행을 해보았지만 동일한 증상이 발생)
 - **mapping_11**에서 후생관 앞 교차로에서 잘못 mapping 되면서 경상대 2호관 까지 가는 길이 7호관 건물을 가로 질러가는 문제가 발생
 <div align="center">
