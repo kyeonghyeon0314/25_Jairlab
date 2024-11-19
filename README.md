@@ -32,7 +32,7 @@ pcd 파일 저장은 lego-loam 상에서 ```computer/tmp/``` 디렉토리안에 
   </div>
   <div style="margin-bottom: 10px;">
     <img src="/img/cap/save_directory.png" width="70%">
-    <p style="text-align: center;">tmp윗길</p>
+    <p style="text-align: center;">tmp</p>
   </div>
 </div>
 
