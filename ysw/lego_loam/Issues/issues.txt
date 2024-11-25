@@ -17,6 +17,29 @@ $$$ mapOptimization.cpp: lego_loam을 중지하지 않고도, 다음 map을 잘 
 
 $$$ (확인용)last_pcd_names.txt: 각 bag 파일에 대한 최종 pcd 파일 이름
 
+======
+1120~
+큰 loop에서 발생하는 약간의 왜곡(중도 찌그러지는 현상 등) 해결방안 모색 중.
+1. faster-lio로 imu data 써서 11번째 bag 맵핑해봤지만, 1000s 쯤에서 심한 왜곡 발생(pcv 파일 용량도 너무 큼)
+2. lego-loam으로 imu data 없이 변수 값 변경해보면서 맵핑해봤지만, 여전히 후생관 근처 loop-closure에서 약간의 왜곡(중도 찌그러짐) 발생
+3. 6 dof 쓰는 slam 알고리즘 돌려보면서 lego_loam의 feature-extraction 알고리즘 수정하도록 결정
+--> Nov25 수정: 그냥 다음 단계 진행(fast-lio2까지만 돌려보기)
 
++++ Nov25
+4. 다음 단계 진행
+semantic-segmantation 사용 모델
+MSeg3D
+git : https://github.com/jialeli1/lidarseg3d
+paper : https://arxiv.org/abs/2303.08600
 
+LaserMix
+git : https://github.com/ldkong1205/LaserMix
+paper : https://arxiv.org/abs/2405.05258
 
+RandLA-Net
+git : https://github.com/QingyongHu/RandLA-Net
+paper : https://arxiv.org/abs/1911.11236
+
+PointNet++
+git : https://github.com/charlesq34/pointnet2
+paper : https://arxiv.org/pdf/1706.02413
