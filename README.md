@@ -12,7 +12,8 @@
 
 ## utility.h 수정
 - VLP-16 관련 상수들 주석 처리
-- Ouster OS1-64 주석 해제
+- ~~Ouster OS1-64 주석 해제~~
+- Ouster OS1-16 주석 해제 (기종에 맞게)
 - ```extern const string pointCloudTopic = "/velodyne_points"``` 토픽 ```/ouster/points```로 수정
 ### 특이사항
 - LeGO-LOAM에서는 9-DOF IMU가 필요하므로 ouster 기종은 imu/data를 사용할 수 없음
