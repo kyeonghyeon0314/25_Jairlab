@@ -20,3 +20,10 @@ Todo
 2. Mapping(w. imu data; faster-lio-sam, ...)
 ..
 10. Re-installing ubuntu on the new SSD, try "Docker"(good for complex DL setups?)
+
+===========================Dec1===================
+
+1. labelCloud로 박스 추가해서 맵 한 개당 bin 파일 하나씩 만들 수는 있는 것 같음
+--> img/labelCloud_ex.png
+2. legoloam으로 맵핑하면 y좌표값과 z좌표값이 바뀌는 듯함(이전에 legoloam으로 라벨링할 때도 발견한 문제 또 발생했었던..)
+--> img/vi_pcd.png
