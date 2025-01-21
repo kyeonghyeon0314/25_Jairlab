@@ -282,3 +282,288 @@ WORKDIR /dst
 #sol for prob6
 # change semantickiit dataset structure
 
+#prob7
+# -------------------- 
+#     after_test:
+#     (VERY_HIGH   ) RuntimeInfoHook                    
+#      -------------------- 
+#     after_run:
+#     (BELOW_NORMAL) LoggerHook                         
+#      -------------------- 
+#     /dst/LaserMix/mmdet3d/evaluation/functional/kitti_utils/eval.py:10: NumbaDeprecationWarning: The 'nopython' keyword argument was not supplied to the 'numba.jit' decorator. The implicit default value for this argument is currently False, but it will be changed to True in Numba 0.59.0. See https://numba.readthedocs.io/en/stable/reference/deprecation.html#deprecation-of-object-mode-fall-back-behaviour-when-using-jit for details.
+#       def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
+#     01/16 06:49:56 - mmengine - WARNING - The prefix is not set in metric class SegMetric.
+#     ERROR: Unexpected bus error encountered in worker. This might be caused by insufficient shared memory (shm).
+#     Traceback (most recent call last):
+#       File "/usr/lib/python3.8/multiprocessing/queues.py", line 239, in _feed
+#         obj = _ForkingPickler.dumps(obj)
+#       File "/usr/lib/python3.8/multiprocessing/reduction.py", line 51, in dumps
+#         cls(buf, protocol).dump(obj)
+#       File "/usr/local/lib/python3.8/dist-packages/torch/multiprocessing/reductions.py", line 328, in reduce_storage
+#         fd, size = storage._share_fd_()
+#     RuntimeError: falseINTERNAL ASSERT FAILED at "../aten/src/ATen/MapAllocator.cpp":300, please report a bug to PyTorch. unable to write to file </torch_5875_10>
+#     Traceback (most recent call last):
+#       File "/usr/local/lib/python3.8/dist-packages/mmengine/config/config.py", line 1483, in pretty_text
+#         text, _ = FormatCode(text, style_config=yapf_style)
+#       File "/usr/local/lib/python3.8/dist-packages/yapf/yapflib/yapf_api.py", line 203, in FormatCode
+#         reformatted_source = FormatTree(tree, style_config=style_config, lines=lines)
+#       File "/usr/local/lib/python3.8/dist-packages/yapf/yapflib/yapf_api.py", line 139, in FormatTree
+#         return reformatter.Reformat(_SplitSemicolons(llines), lines)
+#       File "/usr/local/lib/python3.8/dist-packages/yapf/yapflib/reformatter.py", line 89, in Reformat
+#         elif not _AnalyzeSolutionSpace(state):
+#       File "/usr/local/lib/python3.8/dist-packages/yapf/yapflib/reformatter.py", line 491, in _AnalyzeSolutionSpace
+#         seen.add(node.state)
+#       File "/usr/local/lib/python3.8/dist-packages/yapf/yapflib/format_decision_state.py", line 98, in __eq__
+#         def __eq__(self, other):
+#       File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/_utils/signal_handling.py", line 66, in handler
+#         _error_if_any_worker_fails()
+#     RuntimeError: DataLoader worker (pid 5899) is killed by signal: Bus error. It is possible that dataloader's workers are out of shared memory. Please try to raise your shared memory limit.
+#     During handling of the above exception, another exception occurred:
+#     Traceback (most recent call last):
+#       File "tools/train.py", line 135, in <module>
+#         main()
+#       File "tools/train.py", line 131, in main
+#         runner.train()
+#       File "/usr/local/lib/python3.8/dist-packages/mmengine/runner/runner.py", line 1745, in train
+#         self.call_hook('before_run')
+#       File "/usr/local/lib/python3.8/dist-packages/mmengine/runner/runner.py", line 1839, in call_hook
+#         getattr(hook, fn_name)(self, **kwargs)
+#       File "/usr/local/lib/python3.8/dist-packages/mmengine/hooks/runtime_info_hook.py", line 51, in before_run
+#         cfg=runner.cfg.pretty_text,
+#       File "/usr/local/lib/python3.8/dist-packages/mmengine/config/config.py", line 1488, in pretty_text
+#         raise SyntaxError('Failed to format the config file, please '
+#     SyntaxError: Failed to format the config file, please check the syntax of: 
+#     auto_scale_lr=dict(
+#         base_batch_size=32,
+#         enable=False)
+#     backend_args=None
+#     branch_field=[
+#         'sup',
+#         'unsup',
+#         ]
+#     class_names=[
+#         'car',
+#         'bicycle',
+#         'motorcycle',
+#         'truck',
+#sol for prob7: reduce batch_size in LaserMix/configs/lasermix/lasermix_cy3d_semi_semantickitti_10.py
+#line152: batch_size=4 -> batch_size=2
+
+#prob8
+#  -------------------- 
+# /dst/LaserMix/mmdet3d/evaluation/functional/kitti_utils/eval.py:10: NumbaDeprecationWarning: The 'nopython' keyword argument was not supplied to the 'numba.jit' decorator. The implicit default value for this argument is currently False, but it will be changed to True in Numba 0.59.0. See https://numba.readthedocs.io/en/stable/reference/deprecation.html#deprecation-of-object-mode-fall-back-behaviour-when-using-jit for details.
+#   def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
+# 01/16 07:22:05 - mmengine - WARNING - The prefix is not set in metric class SegMetric.
+# 01/16 07:22:09 - mmengine - WARNING - "FileClient" will be deprecated in future. Please use io functions in https://mmengine.readthedocs.io/en/latest/api/fileio.html#file-io
+# 01/16 07:22:09 - mmengine - WARNING - "HardDiskBackend" is the alias of "LocalBackend" and the former will be deprecated in future.
+# 01/16 07:22:09 - mmengine - INFO - Checkpoints will be saved to /dst/LaserMix/work_dirs/lasermix_cy3d_semi_semantickitti_10.
+# Traceback (most recent call last):
+#   File "tools/train.py", line 135, in <module>
+#     main()
+#   File "tools/train.py", line 131, in main
+#     runner.train()
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/runner/runner.py", line 1777, in train
+#     model = self.train_loop.run()  # type: ignore
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/runner/loops.py", line 289, in run
+#     self.run_iter(data_batch)
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/runner/loops.py", line 313, in run_iter
+#     outputs = self.runner.model.train_step(
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/model/base_model/base_model.py", line 113, in train_step
+#     data = self.data_preprocessor(data, True)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+#     return forward_call(*input, **kwargs)
+#   File "/dst/LaserMix/mmdet3d/models/data_preprocessors/data_preprocessor.py", line 564, in forward
+#     multi_branch_data[branch] = self.data_preprocessor(_data, training)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+#     return forward_call(*input, **kwargs)
+#   File "/dst/LaserMix/mmdet3d/models/data_preprocessors/data_preprocessor.py", line 152, in forward
+#     return self.simple_process(data, training)
+#   File "/dst/LaserMix/mmdet3d/models/data_preprocessors/data_preprocessor.py", line 178, in simple_process
+#     voxel_dict = self.voxelize(inputs['points'], data_samples)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/autograd/grad_mode.py", line 28, in decorate_context
+#     return func(*args, **kwargs)
+#   File "/dst/LaserMix/mmdet3d/models/data_preprocessors/data_preprocessor.py", line 424, in voxelize
+#     voxels = torch.cat(voxels, dim=0)
+# NotImplementedError: There were no tensor arguments to this function (e.g., you passed an empty list of Tensors), but no fallback function is registered for schema aten::_cat.  This usually means that this function requires a non-empty list of Tensors, or that you (the operator writer) forgot to register a fallback function.  Available functions are [CPU, CUDA, QuantizedCPU, BackendSelect, Python, Named, Conjugate, Negative, ADInplaceOrView, AutogradOther, AutogradCPU, AutogradCUDA, AutogradXLA, AutogradLazy, AutogradXPU, AutogradMLC, AutogradHPU, AutogradNestedTensor, AutogradPrivateUse1, AutogradPrivateUse2, AutogradPrivateUse3, Tracer, UNKNOWN_TENSOR_TYPE_ID, Autocast, Batched, VmapMode].
+# CPU: registered at aten/src/ATen/RegisterCPU.cpp:18433 [kernel]
+# CUDA: registered at aten/src/ATen/RegisterCUDA.cpp:26496 [kernel]
+# QuantizedCPU: registered at aten/src/ATen/RegisterQuantizedCPU.cpp:1068 [kernel]
+# BackendSelect: fallthrough registered at ../aten/src/ATen/core/BackendSelectFallbackKernel.cpp:3 [backend fallback]
+# Python: registered at ../aten/src/ATen/core/PythonFallbackKernel.cpp:47 [backend fallback]
+# Named: registered at ../aten/src/ATen/core/NamedRegistrations.cpp:7 [backend fallback]
+# Conjugate: registered at ../aten/src/ATen/ConjugateFallback.cpp:18 [backend fallback]
+# Negative: registered at ../aten/src/ATen/native/NegateFallback.cpp:18 [backend fallback]
+# ADInplaceOrView: fallthrough registered at ../aten/src/ATen/core/VariableFallbackKernel.cpp:64 [backend fallback]
+# AutogradOther: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradCPU: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradCUDA: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradXLA: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradLazy: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradXPU: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradMLC: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradHPU: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradNestedTensor: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradPrivateUse1: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradPrivateUse2: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# AutogradPrivateUse3: registered at ../torch/csrc/autograd/generated/VariableType_3.cpp:10141 [autograd kernel]
+# Tracer: registered at ../torch/csrc/autograd/generated/TraceType_3.cpp:11560 [kernel]
+# UNKNOWN_TENSOR_TYPE_ID: fallthrough registered at ../aten/src/ATen/autocast_mode.cpp:466 [backend fallback]
+# Autocast: fallthrough registered at ../aten/src/ATen/autocast_mode.cpp:305 [backend fallback]
+# Batched: registered at ../aten/src/ATen/BatchingRegistrations.cpp:1016 [backend fallback]
+# VmapMode: fallthrough registered at ../aten/src/ATen/VmapModeRegistrations.cpp:33 [backend fallback]
+#sol for prob8: reduce batch_size in LaserMix/configs/lasermix/lasermix_cy3d_semi_semantickitti_10.py
+#line152&154: batch_size=4 -> batch_size=2
+
+#prob9
+# 01/17 02:52:21 - mmengine - INFO - Distributed training is not used, all SyncBatchNorm (SyncBN) layers in the model will be automatically reverted to BatchNormXd layers if they are used.
+# 01/17 02:52:21 - mmengine - INFO - Autoplay mode, press [SPACE] to pause.
+# 01/17 02:52:21 - mmengine - INFO - Hooks will be executed in the following order:
+# before_run:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+# (BELOW_NORMAL) LoggerHook                         
+#  -------------------- 
+# before_train:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+# (NORMAL      ) IterTimerHook                      
+# (NORMAL      ) MeanTeacherHook                    
+# (VERY_LOW    ) CheckpointHook                     
+#  -------------------- 
+# before_train_epoch:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+# (NORMAL      ) IterTimerHook                      
+# (NORMAL      ) DistSamplerSeedHook                
+#  -------------------- 
+# before_train_iter:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+# (NORMAL      ) IterTimerHook                      
+#  -------------------- 
+# after_train_iter:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+# (NORMAL      ) IterTimerHook                      
+# (NORMAL      ) MeanTeacherHook                    
+# (BELOW_NORMAL) LoggerHook                         
+# (LOW         ) ParamSchedulerHook                 
+# (VERY_LOW    ) CheckpointHook                     
+#  -------------------- 
+# after_train_epoch:
+# (NORMAL      ) IterTimerHook                      
+# (LOW         ) ParamSchedulerHook                 
+# (VERY_LOW    ) CheckpointHook                     
+#  -------------------- 
+# before_val:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+#  -------------------- 
+# before_val_epoch:
+# (NORMAL      ) IterTimerHook                      
+#  -------------------- 
+# before_val_iter:
+# (NORMAL      ) IterTimerHook                      
+#  -------------------- 
+# after_val_iter:
+# (NORMAL      ) IterTimerHook                      
+# (NORMAL      ) Det3DVisualizationHook             
+# (BELOW_NORMAL) LoggerHook                         
+#  -------------------- 
+# after_val_epoch:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+# (NORMAL      ) IterTimerHook                      
+# (BELOW_NORMAL) LoggerHook                         
+# (LOW         ) ParamSchedulerHook                 
+# (VERY_LOW    ) CheckpointHook                     
+#  -------------------- 
+# after_val:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+#  -------------------- 
+# after_train:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+# (VERY_LOW    ) CheckpointHook                     
+#  -------------------- 
+# before_test:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+#  -------------------- 
+# before_test_epoch:
+# (NORMAL      ) IterTimerHook                      
+#  -------------------- 
+# before_test_iter:
+# (NORMAL      ) IterTimerHook                      
+#  -------------------- 
+# after_test_iter:
+# (NORMAL      ) IterTimerHook                      
+# (NORMAL      ) Det3DVisualizationHook             
+# (BELOW_NORMAL) LoggerHook                         
+#  -------------------- 
+# after_test_epoch:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+# (NORMAL      ) IterTimerHook                      
+# (BELOW_NORMAL) LoggerHook                         
+#  -------------------- 
+# after_test:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+#  -------------------- 
+# after_run:
+# (BELOW_NORMAL) LoggerHook                         
+#  -------------------- 
+# /dst/LaserMix/mmdet3d/evaluation/functional/kitti_utils/eval.py:10: NumbaDeprecationWarning: The 'nopython' keyword argument was not supplied to the 'numba.jit' decorator. The implicit default value for this argument is currently False, but it will be changed to True in Numba 0.59.0. See https://numba.readthedocs.io/en/stable/reference/deprecation.html#deprecation-of-object-mode-fall-back-behaviour-when-using-jit for details.
+#   def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
+# 01/17 02:52:25 - mmengine - WARNING - The prefix is not set in metric class SegMetric.
+# 01/17 02:52:28 - mmengine - WARNING - "FileClient" will be deprecated in future. Please use io functions in https://mmengine.readthedocs.io/en/latest/api/fileio.html#file-io
+# 01/17 02:52:28 - mmengine - WARNING - "HardDiskBackend" is the alias of "LocalBackend" and the former will be deprecated in future.
+# 01/17 02:52:28 - mmengine - INFO - Checkpoints will be saved to /dst/LaserMix/work_dirs/lasermix_cy3d_semi_semantickitti_10.
+# Traceback (most recent call last):
+#   File "tools/train.py", line 135, in <module>
+#     main()
+#   File "tools/train.py", line 131, in main
+#     runner.train()
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/runner/runner.py", line 1777, in train
+#     model = self.train_loop.run()  # type: ignore
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/runner/loops.py", line 289, in run
+#     self.run_iter(data_batch)
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/runner/loops.py", line 313, in run_iter
+#     outputs = self.runner.model.train_step(
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/model/base_model/base_model.py", line 114, in train_step
+#     losses = self._run_forward(data, mode='loss')  # type: ignore
+#   File "/usr/local/lib/python3.8/dist-packages/mmengine/model/base_model/base_model.py", line 361, in _run_forward
+#     results = self(**data, mode=mode)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+#     return forward_call(*input, **kwargs)
+#   File "/dst/LaserMix/mmdet3d/models/segmentors/base.py", line 102, in forward
+#     return self.loss(inputs, data_samples)
+#   File "/dst/LaserMix/mmdet3d/models/segmentors/lasermix.py", line 109, in loss
+#     logits_sup_t = self.teacher(multi_batch_inputs['sup'], multi_batch_data_samples['sup'], mode='tensor')
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+#     return forward_call(*input, **kwargs)
+#   File "/dst/LaserMix/mmdet3d/models/segmentors/base.py", line 106, in forward
+#     return self._forward(inputs, data_samples)
+#   File "/dst/LaserMix/mmdet3d/models/segmentors/cylinder3d.py", line 165, in _forward
+#     voxel_dict = self.extract_feat(batch_inputs_dict)
+#   File "/dst/LaserMix/mmdet3d/models/segmentors/cylinder3d.py", line 73, in extract_feat
+#     voxel_dict = self.voxel_encoder(voxel_dict)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+#     return forward_call(*input, **kwargs)
+#   File "/dst/LaserMix/mmdet3d/models/voxel_encoders/voxel_encoder.py", line 627, in forward
+#     features = vfe(features)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+#     return forward_call(*input, **kwargs)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/container.py", line 141, in forward
+#     input = module(input)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+#     return forward_call(*input, **kwargs)
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/modules/batchnorm.py", line 168, in forward
+#     return F.batch_norm(
+#   File "/usr/local/lib/python3.8/dist-packages/torch/nn/functional.py", line 2282, in batch_norm
+#     return torch.batch_norm(
+# RuntimeError: CUDA out of memory. Tried to allocate 122.00 MiB (GPU 0; 5.79 GiB total capacity; 2.38 GiB already allocated; 54.38 MiB free; 2.50 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
+#sol for prob9: num_workers=4 --> num_workers=1 in LaserMix/configs/lasermix/lasermix_cy3d_semi_semantickitti_10.py:line154
+
+
+#prob10
+# ...
+# after_test:
+# (VERY_HIGH   ) RuntimeInfoHook                    
+#  -------------------- 
+# after_run:
+# (BELOW_NORMAL) LoggerHook                         
+#  -------------------- 
+# Killed
+# seems like it exceeds memory capacity
+# watch mem16_swap8.webm & mem16_swap8.png
