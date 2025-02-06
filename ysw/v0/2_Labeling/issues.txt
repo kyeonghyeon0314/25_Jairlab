@@ -1,0 +1,29 @@
+1. rviz상에서 marker로 라벨링하기
+2. 소프트웨어 활용(cloudcompare, labelcloud 등)
+    - cloudcompare 써봤는데, txt파일 저장은 되는데, [ 0 0 0 0, 0 1 0 0, 0 0 1 0, 0 0 0 1 ] 만 저장됨.
+    - marker로 먼저 하는 게 나아보임
+    - 어떤 형식(png, txt, label, bin 등)의 파일이 얼마나 필요한지 고려해봐야 됨
+
+===========================Nov30===================
+
+Issues
+1. Trouble @ running MSeg3D with semantickitti; 3_Semantic_Segmentation/Troubleshooting
+2. Lack of storage...(new SSD will be available next Wednesday)
+==> Temp_Sol: Removed backup, duplicate files
+
+3. pip error(ft. pip install labelcloud)
+==> venv 쓰니까 일단 pip는 인식됨. labeling 진행(labelcloud부터)
+
+Todo
+0. Labeling(labelcloud, rviz marker...)
+1. Semantic-Segmentation(MSeg3D, LaserMix, PTV3...)
+2. Mapping(w. imu data; faster-lio-sam, ...)
+..
+10. Re-installing ubuntu on the new SSD, try "Docker"(good for complex DL setups?)
+
+===========================Dec1===================
+
+1. labelCloud로 박스 추가해서 맵 한 개당 bin 파일 하나씩 만들 수는 있는 것 같음
+--> img/labelCloud_ex.png
+2. legoloam으로 맵핑하면 y좌표값과 z좌표값이 바뀌는 듯함(이전에 legoloam으로 라벨링할 때도 발견한 문제 또 발생했었던..)
+--> img/vi_pcd.png

@@ -1,0 +1,54 @@
+Followed instructions in 
+https://github.com/RobustFieldAutonomyLab/LeGO-LOAM,
+but found error in "Compile"(compile_error_01.png).
+$ catkin_make -j1
+
+1. fix utility.h
+Change Line13 to `#include <opencv2/opencv.hpp>`
+- reference
+https://answers.opencv.org/question/225224/opencvcvh-not-found/
+
+but, found error again(compile_error_02.png).
+2. fix LeGO-LOAM/LeGO-LOAM/CMakeLists.txt
+Comment line4 and add line5~6(change c++ version)
+- reference
+https://github.com/PointCloudLibrary/pcl/issues/3562#issuecomment-575344030
+
+but, found error again(compile_error_03.png).
+3. fix /usr/include/pcl-1.10/pcl/filters/voxel_grid.h
+See line340 and line669 for-loop.
+change ni's type Eigen::Index to int
+- reference
+https://github.com/RobustFieldAutonomyLab/LeGO-LOAM/issues/215#issuecomment-824809870
+
+but, found error again(compile_error_04.png).
+4. fix LeGO-LOAM/LeGO-LOAM/CMakeLists.txt
+add
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost COMPONENTS serialization timer thread chrono)
+and link Boost_INCLUDE_DIRS to mapOptimization(target_link_libraries)
+- reference
+https://csj000714.tistory.com/921
+
+========= additional settings ============
+1. install libparmetis-dev
+
+$ roslaunch lego_loam run.launch
+...
+/home/ysw/catkin_ws/devel/lib/lego_loam/mapOptmization: error while loading shared libraries: libmetis.so: cannot open shared object file: No such file or directory
+process[transformFusion-8]: started with pid [30040]
+[mapOptmization-7] process has died [pid 30037, exit code 127, cmd /home/ysw/catkin_ws/devel/lib/lego_loam/mapOptmization __name:=mapOptmization __log:=/home/ysw/.ros/log/c6a496b4-e392-11ef-872c-417ce006fd71/mapOptmization-7.log].
+log file: /home/ysw/.ros/log/c6a496b4-e392-11ef-872c-417ce006fd71/mapOptmization-7*.log
+...
+
+$ sudo apt-get install libparmetis-dev
+
+2. change framde id "/camera_init" to "camera_init" in
+mapOptimization.cpp
+--> Line259, 262, 698, 706, 719, 793, 867, 913
+featureAssociation.cpp
+--> Line793, 800, 807, 811
+
+3. settings for ouster os1-32: fix utility.h

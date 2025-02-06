@@ -1,0 +1,10 @@
+using venv...
+
+# activate virtual environment
+$ source /myenv/bin/activate
+
+$ pip install -U pip>=20.3
+
+$ pip install -r requirements.txt
+
+$ python3 labelCloud.py

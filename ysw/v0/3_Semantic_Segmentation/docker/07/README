@@ -1,0 +1,23 @@
+semantic-kitti.yaml: copied from https://github.com/PRBonn/semantic-kitti-api/blob/master/config/semantic-kitti.yaml
+
+data structure
+
+- LaserMix/
+  - configs/
+  - data/
+    - semantickitti/
+      - sequences/
+      - semantic-kitti.yaml
+      - semantickitti_infos_test.pkl
+      - semantickitti_infos_train.1-unlabeled.pkl
+      - semantickitti_infos_train.1.pkl
+      - semantickitti_infos_train.10-unlabeled.pkl
+      - ...
+      - semantickitti_infos_train.pkl
+      - semantickitti_infos_val.pkl
+  - docker/
+  - docs/
+  - mmdet3d/
+  - ...
+  - tools/
+  - ...
