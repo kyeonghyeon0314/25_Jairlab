@@ -1,0 +1,14 @@
+1. /app/run_mapping_online.cc
+
+comment line43~45
+--> disable saving map
+
+2. /src/laser_mapping.cc
+
+comment line736~751
+--> disable saving map
+
+3. /rviz_cfg/loam_livox.rviz
+
+modify "Displays", "Views"
+--> visualize ONLY current pointclouds(decrease history_scan's decay time to 0)
