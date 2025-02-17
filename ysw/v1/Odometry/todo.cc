@@ -14,6 +14,12 @@
     * https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
     * ************************ BACK TO quat2rot ********************
     * < writing rot_mat to poses.txt may disturb odometry >
+    
+    *           [sematicKITTI poses.txt format]
+        * x-axis: right
+        * y-axis: downward
+        * z-axis: forward
+    *
 
 
 - calib.txt: 1 0 0 0 0 1 0 0 0 0 1 0
