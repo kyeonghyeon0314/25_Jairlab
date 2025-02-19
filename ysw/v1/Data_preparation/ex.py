@@ -35,6 +35,44 @@ def quaternion_matrix(quaternion):
         [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0]],
         [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2]]])
 
+import numpy as np
+
+def quaternion_to_rotation_matrix(q_x, q_y, q_z, q_w):
+    """
+    Convert a quaternion (q_x, q_y, q_z, q_w) into a 3x3 rotation matrix.
+    """
+    R = np.array([
+        [1 - 2 * (q_y**2 + q_z**2), 2 * (q_x * q_y - q_z * q_w), 2 * (q_x * q_z + q_y * q_w)],
+        [2 * (q_x * q_y + q_z * q_w), 1 - 2 * (q_x**2 + q_z**2), 2 * (q_y * q_z - q_x * q_w)],
+        [2 * (q_x * q_z - q_y * q_w), 2 * (q_y * q_z + q_x * q_w), 1 - 2 * (q_x**2 + q_y**2)]
+    ])
+    return R
+
+def v3(quaternion):
+    """Convert quaternion to 3x3 rotation matrix"""
+    q = np.array(quaternion, dtype=np.float64)
+    # n = np.dot(q, q)
+    n = q[0]**2 + q[1]**2 + q[2]**2 + q[3]**2
+
+    print('np.dot VS manual')
+    print('np.dot: ', np.dot(q,q))
+    print('mul manually: ', n)
+    # if n < _EPS:
+    #     return np.identity(3)
+    if n == 0:
+        return np.identity(3)
+    
+    s = 2 / n  # Scale factor
+    
+    print('math.sqrt precision check')
+    print('math.sqrt()**2: ',math.sqrt(s)**2)
+    print(s)
+    
+    return  np.array([
+        [1 - s*(q[1]**2 + q[2]**2), s * (q[0] * q[1] - q[2] * q[3]), s * (q[0] * q[2] + q[1] * q[3])],
+        [s * (q[0] * q[1] + q[2] * q[3]), 1 - s * (q[0]**2 + q[2]**2), s * (q[1] * q[2] - q[0] * q[3])],
+        [s * (q[0] * q[2] - q[1] * q[3]), s * (q[1] * q[2] + q[0] * q[3]), 1 - s * (q[0]**2 + q[1]**2)]
+    ])
 test = [1, 0, 0, 0]
 test_q = numpy.array(test, dtype=numpy.float64, copy=True)
 test_n = numpy.dot(test_q, test_q)  # test_n: 1
@@ -56,4 +94,30 @@ print('\n'*3, rot)
     #  [-0.06700562  0.99760748  0.01701674]
     #  [ 0.0098324  -0.01639403  0.99981726]]
 
+q = [0, 0, 0, 1]
+print('\n', quaternion_matrix(q))
+
+# Example usage:
+q_x, q_y, q_z, q_w = 0.0, 0.0, 0.0, 1.0  # Identity quaternion
+rotation_matrix = quaternion_to_rotation_matrix(q_x, q_y, q_z, q_w)
+print(rotation_matrix)
+
+q_1 = [1,2,3]
+q_2 = [4,5,6]
+print(np.outer(q_1, q_2))
+
 # check : https://www.andre-gaschler.com/rotationconverter/
+
+########################### DEBUGGING #####################
+
+eps_limit_check = 0.000000000000001
+if(eps_limit_check < _EPS):
+    print("AAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHH")
+print('\n'*5)
+print("calculation check for seq00")
+print("seq00",": first pose: ")
+x, y, z, qx, qy, qz, qw = 0.001703091881709, -0.002019366481713, 0.001319611142677, -0.000079097287848, 0.000012570071147, -0.000012058879051, 0.999999996720098
+print(x,y,z,qx,qy,qz,qw)
+
+quat = [qx, qy, qz, qw]
+print(v3(quat))

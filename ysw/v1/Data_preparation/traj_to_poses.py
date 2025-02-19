@@ -1,22 +1,26 @@
 import os
 import numpy as np
-import math
+# import math
 import argparse
 
-_EPS = np.finfo(float).eps * 4.0
+# _EPS = np.finfo(float).eps * 4.0      # bug?
 
 def quaternion_matrix(quaternion):
     """Convert quaternion to 3x3 rotation matrix"""
     q = np.array(quaternion, dtype=np.float64)
-    n = np.dot(q, q)
-    if n < _EPS:
+    # n = np.dot(q, q)
+    n = q[0]**2 + q[1]**2 + q[2]**2 + q[3]**2
+    # if n < _EPS:
+    #     return np.identity(3)
+    if n == 0:
         return np.identity(3)
-    q *= math.sqrt(2.0 / n)
-    q = np.outer(q, q)
-    return np.array([
-        [1.0 - q[2,2] - q[3,3], q[1,2] - q[3,0], q[1,3] + q[2,0]],
-        [q[1,2] + q[3,0], 1.0 - q[1,1] - q[3,3], q[2,3] - q[1,0]],
-        [q[1,3] - q[2,0], q[2,3] + q[1,0], 1.0 - q[1,1] - q[2,2]]
+    
+    s = 2 / n  # Scale factor
+    
+    return  np.array([
+        [1 - s*(q[1]**2 + q[2]**2), s * (q[0] * q[1] - q[2] * q[3]), s * (q[0] * q[2] + q[1] * q[3])],
+        [s * (q[0] * q[1] + q[2] * q[3]), 1 - s * (q[0]**2 + q[2]**2), s * (q[1] * q[2] - q[0] * q[3])],
+        [s * (q[0] * q[2] - q[1] * q[3]), s * (q[1] * q[2] + q[0] * q[3]), 1 - s * (q[0]**2 + q[1]**2)]
     ])
 
 def process_sequence(input_path, output_path):
@@ -32,7 +36,7 @@ def process_sequence(input_path, output_path):
             qx, qy, qz, qw = parts[4:8]
             
             # Convert quaternion to rotation matrix
-            R = quaternion_matrix([qw, qx, qy, qz])
+            R = quaternion_matrix([qx, qy, qz, qw])
             
             # Format as KITTI pose line
             pose_line = f"{R[0,0]} {R[0,1]} {R[0,2]} {x} " \
