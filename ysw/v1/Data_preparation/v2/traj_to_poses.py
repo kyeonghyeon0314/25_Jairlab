@@ -48,8 +48,8 @@ if __name__ == "__main__":
 # python traj_to_poses.py ~/catkin_ws/src/faster-lio/Log/traj .
 
 # Troubleshooting(unstable pose at starting point)
-        # 1. change line1~10 of poses.txt to "1 0 0 0 0 1 0 0 0 0 1 0"(adjustable)
-                # seq01, 
+        # 1. change line1~? of poses.txt to "1 0 0 0 0 1 0 0 0 0 1 0"(adjustable)
+                # seq01(1~10), 
         # 2. insert "1 0 0 0 0 1 0 0 0 0 1 0" atop poses.txt if needed(fit with number of bin files)
 # i.e. seq01 bag: bin_num(from pure bag): 9803     VS      poses.txt' line_num: 9795
 # poses.txt would be like..
