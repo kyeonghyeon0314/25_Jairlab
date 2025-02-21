@@ -1,32 +1,12 @@
-
 #!/usr/bin/env python3     # need this line?
 # .pcd -> .bin & traj.txt -> poses.txt converter
 import os
 import numpy as np
 import argparse
 from glob import glob
-from pypcd import pypcd  # pip install pypcd
-# in local pypcd.py:
-# import cStringIO as sio --> from io import StringIO
-# line283: if ln.startswith("DATA"): --> if ln.startswith(b"DATA"):
-# line83: if ln.startswith('#') or len(ln) < 2: --> if ln.startswith(b'#') or len(ln) < 2:
-# tired of pypcd!
+# from pypcd import pypcd  # pip install pypcd
 import open3d as o3d
-
-
-def quaternion_matrix(quaternion):
-    """Convert a quaternion [qx, qy, qz, qw] to a 3x3 rotation matrix"""
-    q = np.array(quaternion, dtype=np.float64)
-    # Compute the squared norm
-    n = q[0]**2 + q[1]**2 + q[2]**2 + q[3]**2
-    if n == 0:
-        return np.identity(3)
-    s = 2 / n
-    return np.array([
-        [1-s*(q[1]**2+q[2]**2), s*(q[0]*q[1]-q[2]*q[3]), s*(q[0]*q[2]+q[1]*q[3])],
-        [s*(q[0]*q[1]+q[2]*q[3]), 1-s*(q[0]**2+q[2]**2), s*(q[1]*q[2]-q[0]*q[3])],
-        [s*(q[0]*q[2]-q[1]*q[3]), s*(q[1]*q[2]+q[0]*q[3]), 1-s*(q[0]**2+q[1]**2)]
-    ])
+from tf.transformations import quaternion_matrix    # use library
 
 def process_trajectory(traj_file, output_pose_file):
     """
@@ -164,4 +144,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-# python3 converter.py /home/ysw/catkin_ws/src/faster-lio/Log /home/ysw/catkin_ws/src/faster-lio/Log
+# python3 converter.py /home/ysw/catkin_ws/src/faster-lio/ori_data_by_fasterlio /home/ysw/catkin_ws/src/faster-lio/data_by_bag_bin

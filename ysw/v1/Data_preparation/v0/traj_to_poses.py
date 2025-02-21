@@ -1,27 +1,6 @@
 import os
-import numpy as np
-# import math
 import argparse
-
-# _EPS = np.finfo(float).eps * 4.0      # bug?
-
-def quaternion_matrix(quaternion):
-    """Convert quaternion to 3x3 rotation matrix"""
-    q = np.array(quaternion, dtype=np.float64)
-    # n = np.dot(q, q)
-    n = q[0]**2 + q[1]**2 + q[2]**2 + q[3]**2
-    # if n < _EPS:
-    #     return np.identity(3)
-    if n == 0:
-        return np.identity(3)
-    
-    s = 2 / n  # Scale factor
-    
-    return  np.array([
-        [1 - s*(q[1]**2 + q[2]**2), s * (q[0] * q[1] - q[2] * q[3]), s * (q[0] * q[2] + q[1] * q[3])],
-        [s * (q[0] * q[1] + q[2] * q[3]), 1 - s * (q[0]**2 + q[2]**2), s * (q[1] * q[2] - q[0] * q[3])],
-        [s * (q[0] * q[2] - q[1] * q[3]), s * (q[1] * q[2] + q[0] * q[3]), 1 - s * (q[0]**2 + q[1]**2)]
-    ])
+from tf.transformations import quaternion_matrix
 
 def process_sequence(input_path, output_path):
     with open(input_path, 'r') as f_in, open(output_path, 'w') as f_out:
