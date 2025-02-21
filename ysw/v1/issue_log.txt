@@ -1,5 +1,0 @@
-- 2025 Feb 6
-remove useless data(offline maps built by legoloam; ft. map-free navigation)
-Odometry-task
-    ㅏ-- LeGO-LOAM, faster-LIO, DLIO tutorials
-    ㅏ-- extract ONLY odometry to estimate pose
