@@ -1,0 +1,25 @@
+rearrange .bin files:
+seq10: 000000.bin ~ 006000.bin
+seq11: 006000.bin ~ 009000.bin
+seq12: 012000.bin ~ 014999.bin
+seq13: 015000.bin ~ 017999.bin
+seq14: 018000.bin ~ 020999.bin
+seq15: 021000.bin ~ 023999.bin
+seq16: 024000.bin ~ 026999.bin
+seq17: 027000.bin ~ 029999.bin
+seq18: 030000.bin ~ 032899.bin
+
+w.r.t. 2024-06-10-18-10-23.bag:
+seq10: 0 ~ 600s
+seq11: 600 ~ 900s
+seq12: 1200 ~ 1500s
+seq13: 1500 ~ 1800s
+seq14: 1800 ~ 2100s
+seq15: 2100 ~ 2400s
+seq16: 2400 ~ 2700s
+seq17: 2700 ~ 3000s
+seq18: 3000 ~ 3290s
+
+1. seq12 ~ seq17: frequent drifts(yawing)
+
+2. skipped 900 ~ 12000s(009000.bin ~ 011999.bin): too many drifts
