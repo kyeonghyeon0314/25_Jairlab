@@ -5,4 +5,13 @@ seq11: 600 ~ 1140s(discard 1140~1200s)
 seq12: 1200 ~ 1800s
 seq13: 1800 ~ 2400s
 seq14: 2400 ~ 3000s
-seq15: 3000 ~ 3290s
+seq15: 3000 ~ 3293s
+
+w.r.t. ".bin" files:
+
+seq10: 000000.bin ~ 005999.bin
+seq11: 006000.bin ~ 011399.bin
+seq12: 012000.bin ~ 017999.bin
+seq13: 018000.bin ~ 023999.bin
+seq14: 024000.bin ~ 029999.bin
+seq15: 030000.bin ~ 032900.bin
