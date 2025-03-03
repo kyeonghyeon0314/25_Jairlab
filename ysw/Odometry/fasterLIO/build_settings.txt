@@ -23,6 +23,3 @@ DEFINE_string(traj_log_file, (std::string(std::string(ROOT_DIR) + "Log/traj.txt"
 
 4. fix pointcloud_preprocess.h:Line 34, 50
 ring type: uint8 -> uint16
-
-5. install glog
- - $ sudo apt-get install libgoogle-glog-dev
