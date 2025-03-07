@@ -42,11 +42,11 @@
 # 아직 지우지 마세요 나중에 활용 예정
 <div align="center">
   <div style="margin-bottom: 10px;">
-    <img src="/img/semantic_segmentation/root_directory.png" width="70%">
+    <img src="/img/semantic_segmentation/root_directory.png" width="10%">
     <p style="text-align: center;">최상위 디렉토리</p>
   </div>
   <div style="margin-bottom: 10px;">
-    <img src="/img/semantic_segmentation/save_directory.png" width="70%">
+    <img src="/img/semantic_segmentation/save_directory.png" width="10%">
     <p style="text-align: center;">tmp</p>
   </div>
 </div>
