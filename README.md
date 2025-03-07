@@ -22,6 +22,7 @@
     <img src="/img/semantic_segmentation/lasermix.png" width="40%">
     <p style="text-align: center;">수정된 LaserMix</p>
 </div>
+
 ### 개선 사항
 - 아직 학습중
 
