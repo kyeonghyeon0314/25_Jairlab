@@ -17,10 +17,12 @@
 - LaserMix의 teacher-student network 반지도학습 프레임을 이용
 - teacher network에 선행학습된 checkpoints 적용
 - 클래수 MMdetection 기준의 20개에서 5개로 변경 (road, car, sidewalk, other-vehicle, unlabeled)
+
 <div align="center">
   <div style="margin-bottom: 10px;">
     <img src="/img/semantic_segmentation/lasermix.png" width="40%">
     <p style="text-align: center;">수정된 LaserMix</p>
+  </div>
 </div>
 
 ### 개선 사항
