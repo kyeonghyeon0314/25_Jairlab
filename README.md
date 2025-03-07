@@ -17,7 +17,15 @@
 - LaserMix의 teacher-student network 반지도학습 프레임을 이용
 - teacher network에 선행학습된 checkpoints 적용
 - 클래수 MMdetection 기준의 20개에서 5개로 변경 (road, car, sidewalk, other-vehicle, unlabeled)
-## 코드
+<div align="center">
+  <div style="margin-bottom: 10px;">
+    <img src="/img/semantic_segmentation/lasermix.png" width="40%">
+    <p style="text-align: center;">수정된 LaserMix</p>
+</div>
+### 개선 사항
+- 아직 학습중
+
+### 코드
 [FRNet-LaserMix](https://github.com/kyeonghyeon0314/FRNet-LaserMix)
 
 
@@ -31,11 +39,11 @@
 # 아직 지우지 마세요 나중에 활용 예정
 <div align="center">
   <div style="margin-bottom: 10px;">
-    <img src="/img/cap/root_directory.png" width="70%">
+    <img src="/img/semantic_segmentation/root_directory.png" width="70%">
     <p style="text-align: center;">최상위 디렉토리</p>
   </div>
   <div style="margin-bottom: 10px;">
-    <img src="/img/cap/save_directory.png" width="70%">
+    <img src="/img/semantic_segmentation/save_directory.png" width="70%">
     <p style="text-align: center;">tmp</p>
   </div>
 </div>
