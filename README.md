@@ -6,7 +6,7 @@
 
 # Global Path Planning  
 ## references
-- [global_localization](https://github.com/ldkong1205/LaserMix)  
+- [global_localization]([https://github.com/ldkong1205/LaserMix](https://github.com/kdh044/Jbnu-Final/tree/main/global_localization))  
 ## 명령어  
 - rosrun global_localization gps_server.py  
 - rosrun global_localization gps_publisher.py
