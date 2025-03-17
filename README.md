@@ -4,10 +4,23 @@
 - Local Path Planning[[Link](#local-path-planning)]
 
 
-# Global Path Planning
+# Global Path Planning  
 ## references
-[아무거나]()
-- Kakao API 활용 waypoints 생성
+- [global_localization](https://github.com/ldkong1205/LaserMix)  
+## 명령어  
+- rosrun global_localization gps_server.py  
+- rosrun global_localization gps_publisher.py
+- rosrun global_localization gps_server.py  
+- rostopic echo waypoints
+## 적용 형식
+- 기존 JavaScript 코드 수정: 목적지 검색 창 제거
+- Waypoint 및 목적지의 위도, 경도 값을 ROS 토픽으로 발행하는 기능 추가
+## 실행 흐름
+- gps_server.py 실행 → 웹 프롬프트(Web UI) 띄움
+- gps_publisher.py 실행 → GPS로 좌표 수신
+- 웹페이지에서 목적지 선택 → 카카오 네비 API 활용
+- Waypoint 및 목적지 좌표(위도, 경도) → ROS 토픽으로 전달
+  
 
 # Semantic Segmentation
 ## references
