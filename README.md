@@ -33,7 +33,7 @@
 
 <div align="center">
   <div style="margin-bottom: 10px;">
-    <img src="/img/semantic_segmentation/lasermix.png" width="40%">
+    <img src="/img/semantic_segmentation/lasermix.png" width="50%">
     <p style="text-align: center;">수정된 LaserMix</p>
   </div>
 </div>
@@ -44,7 +44,7 @@
 - 최종적으로 논문의 ***mIoU*** 점수(74.69, 84.75) 보다 약 **13%, 2.92%** 향상한 **87.67%** 의 결과를 보였습니다.
 
 ### 코드
-[FRNet-LaserMix](https://github.com/kyeonghyeon0314/FRNet-LaserMix)
+- [FRNet-LaserMix](https://github.com/kyeonghyeon0314/FRNet-LaserMix)
 
 
   
