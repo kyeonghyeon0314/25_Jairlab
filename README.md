@@ -5,7 +5,7 @@
 
 
 # Global Path Planning  
-## references
+## 코드
 - [global_localization](https://github.com/kdh044/Jbnu-Final/tree/main/global_localization)
 ## 명령어  
 - rosrun global_localization gps_server.py  
@@ -39,7 +39,6 @@
 </div>
 
 ### 개선 사항
-## 최종 결과
 - car를 제외한 나머지 vehicle을 other-vehicle로 묶고 향상된 학습법으로 학습했을시, **IoU**(67.45, 61.93) 점수가 **1.87%, 7.39%** 향상한것을 보였습니다.
 - 최종적으로 논문의 ***mIoU*** 점수(74.69, 84.75) 보다 약 **13%, 2.92%** 향상한 **87.67%** 의 결과를 보였습니다.
 
