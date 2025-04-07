@@ -6,11 +6,11 @@
 
 # Global Path Planning  
 ## 코드
-- [global_localization](https://github.com/kdh044/Jbnu-Final/tree/main/global_localization)
+- [global_path_planner](https://github.com/kdh044/Jbnu-Final/tree/main/global_path_planner)
 ## 명령어  
-- rosrun global_localization gps_server.py  
-- rosrun global_localization gps_publisher.py
-- rosrun global_localization gps_server.py  
+- rosrun global_path_planner gps_server.py  
+- rosrun global_path_planner gps_publisher.py
+- rosrun global_path_planner gps_server.py  
 - rostopic echo waypoints
 ## 적용 형식
 - 기존 JavaScript 코드 수정: 목적지 검색 창 제거
