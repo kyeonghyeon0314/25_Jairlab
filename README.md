@@ -7,11 +7,13 @@
 # Global Path Planning  
 ## 코드
 - [global_path_planner](https://github.com/kdh044/Jbnu-Final/tree/main/global_path_planner)
-## 명령어  
-- rosrun global_path_planner gps_server.py  
-- rosrun global_path_planner gps_publisher.py
-- rosrun global_path_planner gps_server.py  
-- rostopic echo waypoints
+## 명령어
+```
+rosrun global_path_planner gps_server.py  
+rosrun global_path_planner gps_publisher.py
+rosrun global_path_planner gps_server.py  
+rostopic echo waypoints
+```
 ## 적용 형식
 - 기존 JavaScript 코드 수정: 목적지 검색 창 제거
 - Waypoint 및 목적지의 위도, 경도 값을 ROS 토픽으로 발행하는 기능 추가
