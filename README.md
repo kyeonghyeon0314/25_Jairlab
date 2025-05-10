@@ -53,7 +53,7 @@ rostopic echo waypoints
 ## Local Path Planner[[RL-DWA](https://github.com/BlackTea12/RL-DWA)]
 ## Localization
 
---[local_path_planner]([https://github.com/kdh044/Jbnu-Final/tree/main/global_path_planner](https://github.com/kdh044/Jbnu-Final/tree/main))
+--[local_path_planner](https://github.com/kdh044/Jbnu-Final/tree/main)
 ### 필수 패키지 설치 (Ubuntu 20.04 + ROS Noetic 기준)
 ```bash
 sudo apt update && sudo apt install -y \
