@@ -53,7 +53,28 @@ rostopic echo waypoints
 ## Local Path Planner[[RL-DWA](https://github.com/BlackTea12/RL-DWA)]
 ## Localization
 
+### 필수 패키지 설치 (Ubuntu 20.04 + ROS Noetic 기준)
+```bash
+sudo apt update && sudo apt install -y \
+ros-noetic-husky-desktop \
+ros-noetic-husky-simulator \
+ros-noetic-ackermann-msgs \
+ros-noetic-twist-mux \
+ros-noetic-teleop-twist-keyboard \
+ros-noetic-robot-localization \
+ros-noetic-joint-state-publisher-gui \
+ros-noetic-xacro \
+ros-noetic-gazebo-ros-pkgs \
+ros-noetic-gazebo-ros-control
+```
 
+#### 실행 명령어
+```bash
+roslaunch husky_dwa husky_dwa_gazebo.launch
+roslaunch husky_dwa move_base.launch
+```
+
+---
 
 # 아직 지우지 마세요 나중에 활용 예정
 <div align="center">
