@@ -5,7 +5,7 @@
 
 
 # Global Path Planning  
-## 코드
+## repo
 - [global_path_planner](https://github.com/kdh044/Jbnu-Final/tree/main/global_path_planner)
 ## 명령어
 ```
