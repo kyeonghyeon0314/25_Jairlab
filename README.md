@@ -6,7 +6,7 @@
 
 # Global Path Planning  
 ## repo
-- [global_path_planner](https://github.com/kdh044/Jbnu-Final/tree/main/global_path_planner)
+- [global_path_planner]([https://github.com/kdh044/Jbnu-Final/tree/main/global_path_planner](https://github.com/kdh044/global_path))
 ## 명령어
 ```
 rosrun global_path_planner gps_server.py  
