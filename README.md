@@ -7,6 +7,7 @@
 # Global Path Planning  
 ## repo
 - [global_path_planner](https://github.com/kdh044/global_path)
+- [Odometry](https://github.com/Cascio99/25S_)
 ## 명령어
 ```
 rosrun global_path_planner gps_server.py  
