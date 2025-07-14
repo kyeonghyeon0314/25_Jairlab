@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+  <include file="$(find microstrain_inertial_driver)/launch/microstrain.launch">
+    <arg name="namespace"              value="$(optenv HUSKY_IMU_MICROSTRAIN_NAME microstrain)" />
+    <arg name="node_name"              value="microstrain_inertial_driver" />
+    <arg name="params_file"            value="$(find husky_bringup)/config/microstrain.yaml" />
+  </include>
+</launch>

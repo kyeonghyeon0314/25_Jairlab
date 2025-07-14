@@ -1,0 +1,80 @@
+
+<launch>
+  <arg name="initial_reset"     default="false"/>
+  <arg name="reconnect_timeout" default="6.0"/>
+  <!-- Primary -->
+  <arg name="enable"                 default="$(optenv HUSKY_REALSENSE_ENABLED 0)"/>
+  <arg name="serial"                 default="$(optenv HUSKY_REALSENSE_SERIAL 0)"/> <!-- Serial No. -->
+  <arg name="topic"                  default="$(optenv HUSKY_REALSENSE_TOPIC realsense)"/> <!-- Namespace -->
+  <arg name="pointcloud_enabled"     default="$(optenv HUSKY_REALSENSE_POINTCLOUD_ENABLED 1)"/>
+  <arg name="filters"                default="$(eval 'pointcloud' if arg('pointcloud_enabled') else '')"/>
+  <arg name="depth_enabled"          default="$(optenv HUSKY_REALSENSE_DEPTH_ENABLED 1)"/>
+  <arg name="depth_frames"           default="$(optenv HUSKY_REALSENSE_DEPTH_FRAMERATE 30)"/>
+  <arg name="depth_height"           default="$(optenv HUSKY_REALSENSE_DEPTH_HEIGHT 480)"/>
+  <arg name="depth_width"            default="$(optenv HUSKY_REALSENSE_DEPTH_WIDTH 640)"/>
+  <arg name="color_enabled"          default="$(optenv HUSKY_REALSENSE_COLOR_ENABLED true)"/>
+  <arg name="color_frames"           default="$(optenv HUSKY_REALSENSE_COLOR_FRAMERATE 30)"/>
+  <arg name="color_height"           default="$(optenv HUSKY_REALSENSE_COLOR_HEIGHT 480)"/>
+  <arg name="color_width"            default="$(optenv HUSKY_REALSENSE_COLOR_WIDTH 640)"/>
+  <arg name="tf_prefix"              default="$(optenv HUSKY_REALSENSE_PREFIX camera)_realsense"/>
+
+  <!-- Secondary -->
+  <arg name="secondary_enable"              default="$(optenv HUSKY_REALSENSE_SECONDARY_ENABLED 0)"/>
+  <arg name="secondary_serial"              default="$(optenv HUSKY_REALSENSE_SECONDARY_SERIAL 0)"/> <!-- Serial No. -->
+  <arg name="secondary_topic"               default="$(optenv HUSKY_REALSENSE_SECONDARY_TOPIC realsense_secondary)"/> <!-- Namespace -->
+  <arg name="secondary_pointcloud_enabled"  default="$(optenv HUSKY_REALSENSE_SECONDARY_POINTCLOUD_ENABLED 1)"/>
+  <arg name="secondary_filters"             default="$(eval 'pointcloud' if arg('secondary_pointcloud_enabled') else '')"/>
+  <arg name="secondary_depth_enabled"       default="$(optenv HUSKY_REALSENSE_SECONDARY_DEPTH_ENABLED 1)"/>
+  <arg name="secondary_depth_frames"        default="$(optenv HUSKY_REALSENSE_SECONDARY_DEPTH_FRAMERATE 30)"/>
+  <arg name="secondary_depth_height"        default="$(optenv HUSKY_REALSENSE_SECONDARY_DEPTH_HEIGHT 480)"/>
+  <arg name="secondary_depth_width"         default="$(optenv HUSKY_REALSENSE_SECONDARY_DEPTH_WIDTH 640)"/>
+  <arg name="secondary_color_enabled"       default="$(optenv HUSKY_REALSENSE_SECONDARY_COLOR_ENABLED true)"/>
+  <arg name="secondary_color_frames"        default="$(optenv HUSKY_REALSENSE_SECONDARY_COLOR_FRAMERATE 30)"/>
+  <arg name="secondary_color_height"        default="$(optenv HUSKY_REALSENSE_SECONDARY_COLOR_HEIGHT 480)"/>
+  <arg name="secondary_color_width"         default="$(optenv HUSKY_REALSENSE_SECONDARY_COLOR_WIDTH 640)"/>
+  <arg name="secondary_tf_prefix"           default="$(optenv HUSKY_REALSENSE_SECONDARY_SECONDARY_PREFIX secondary_camera)_realsense"/>
+
+  <!-- Primary Launch -->
+  <group if="$(arg enable)" ns="$(arg topic)">
+    <include file="$(find realsense2_camera)/launch/includes/nodelet.launch.xml">
+      <arg name="serial_no"             value="$(arg serial)"/>
+      <arg name="tf_prefix"             value="$(arg tf_prefix)"/>
+      <arg name="initial_reset"         value="$(arg initial_reset)"/>
+      <arg name="reconnect_timeout"     value="$(arg reconnect_timeout)"/>
+      <!-- color -->
+      <arg name="enable_color"          value="$(arg color_enabled)"/>
+      <arg name="color_width"           value="$(arg color_width)"/>
+      <arg name="color_height"          value="$(arg color_height)"/>
+      <arg name="color_fps"             value="$(arg color_frames)"/>
+      <!-- depth -->
+      <arg name="enable_depth"          value="$(arg depth_enabled)"/>
+      <arg name="depth_width"           value="$(arg depth_width)"/>
+      <arg name="depth_height"          value="$(arg depth_height)"/>
+      <arg name="depth_fps"             value="$(arg depth_frames)"/>
+      <!-- pointcloud -->
+      <arg name="filters"               value="$(arg filters)"/>
+    </include>
+  </group>
+
+  <!-- Secondary Launch -->
+  <group if="$(arg secondary_enable)" ns="$(arg secondary_topic)">
+    <include file="$(find realsense2_camera)/launch/includes/nodelet.launch.xml">
+      <arg name="serial_no"             value="$(arg secondary_serial)"/>
+      <arg name="tf_prefix"             value="$(arg secondary_tf_prefix)"/>
+      <arg name="initial_reset"         value="$(arg initial_reset)"/>
+      <arg name="reconnect_timeout"     value="$(arg reconnect_timeout)"/>
+      <!-- color -->
+      <arg name="enable_color"          value="$(arg secondary_color_enabled)"/>
+      <arg name="color_width"           value="$(arg secondary_color_width)"/>
+      <arg name="color_height"          value="$(arg secondary_color_height)"/>
+      <arg name="color_fps"             value="$(arg secondary_color_frames)"/>
+      <!-- depth -->
+      <arg name="enable_depth"          value="$(arg secondary_depth_enabled)"/>
+      <arg name="depth_width"           value="$(arg secondary_depth_width)"/>
+      <arg name="depth_height"          value="$(arg secondary_depth_height)"/>
+      <arg name="depth_fps"             value="$(arg secondary_depth_frames)"/>
+      <!-- pointcloud -->
+      <arg name="filters"               value="$(arg secondary_filters)"/>
+    </include>
+  </group>
+</launch>
