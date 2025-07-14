@@ -20,7 +20,7 @@
 - **의미론적 분할**: FRNet 기반 LaserMix 반지도 학습을 통한 주행가능 영역 분류
 - **지역 경로 계획**: DWA(Dynamic Window Approach)를 통한 장애물 회피
 - **Localization**: Faster-LIO를 통한 경량 라이다-관성 오도메트리
-- **위치 추정**: GPS/RTK와 Ouster 라이다 센서 통합
+- **위치 추정**: GPS와 Ouster 라이다 센서 통합
 
 ## 🚀 사용법
 실행 순서

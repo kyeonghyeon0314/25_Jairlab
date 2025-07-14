@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+<launch>
+  
+  <param name="/use_sim_time" value="false" />
+
+  <arg name="port" default="$(optenv HUSKY_PORT /dev/ttyUSB0)" />
+
+  <!-- Husky harware driver -->
+  <node pkg="husky_base" type="husky_node" name="husky_node">
+      <rosparam subst_value="true">
+          port: $(arg port)
+
+          control_frequency: 10.0
+          diagnostic_frequency: 1.0
+
+          max_acceleration: 3.0
+          max_speed: 1.0
+          wheel_diameter: 0.3302
+          polling_timeout: 10.0
+      </rosparam>
+  </node>
+
+  
+  <!-- ===== 로봇 제어, 네비게이션, localization 및 모니터링 담당 ===== -->
+  <!-- 환경 독립적: 시뮬레이션과 실제 환경에서 동일하게 사용 -->
+  
+  <!-- Husky 제어 시스템 (robot_state_publisher 포함) -->
+  <!-- <arg name="multimaster" default="$(optenv ROBOT_MULTIMASTER false)"/> -->
+  <!-- <arg name="simulation" default="$(optenv ROBOT_SIMULATION false)"/>
+  <arg name="robot_namespace" default="$(optenv ROBOT_NAMESPACE robot)"/> -->
+  <arg name="enable_ekf" default="false"/>  <!--EKF 비활성화-->
+
+  <arg name="config_extras"
+       default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
+
+  <!-- <include file="$(find multimaster_launch)/launch/multimaster_robot.launch" if="$(arg multimaster)">
+    <arg name="gazebo_interface" value="$(find husky_control)/config/gazebo_interface.yaml" />
+    <arg name="public_interface" value="$(find husky_control)/config/public_interface.yaml" />
+    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    <arg name="simulation" value="$(arg simulation)"/>
+  </include> -->
+
+  <!-- Load robot description -->
+  <param name="robot_description" command="$(find xacro)/xacro '$(find husky_description)/urdf/husky.urdf.xacro'" />
+
+  <!-- Load controller configuration -->
+  <rosparam command="load" file="$(find husky_control)/config/control.yaml" />
+
+  <!-- Spawn controllers -->
+  <node name="base_controller_spawner" pkg="controller_manager" type="spawner"
+        args="husky_joint_publisher husky_velocity_controller"/>
+  <rosparam param="wheel_radius_multiplier" ns="husky_velocity_controller" subst_value="True">
+        $(optenv HUSKY_WHEEL_MULTIPLIER 1.0)
+  </rosparam>
+
+  <node pkg="interactive_marker_twist_server" type="marker_server" name="twist_marker_server" output="screen">
+    <param name="link_name" value="base_link" />
+  </node>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+    <param name="use_tf_static" value="false"/>
+    <param name="publish_frequency" value="50"/>
+  </node>
+
+  <node pkg="twist_mux" type="twist_mux" name="twist_mux">
+    <rosparam command="load" file="$(find husky_control)/config/twist_mux.yaml" />
+    <remap from="cmd_vel_out" to="husky_velocity_controller/cmd_vel"/>
+  </node>
+
+  <!-- Override the default control parameters, see config/empty.yaml for default. -->
+  <rosparam command="load" file="$(arg config_extras)" subst_value="true" />
+
+  <!-- ===== Faster-LIO Localization (Ouster 32) ===== -->
+  <include file="$(find faster_lio)/launch/mapping_ouster32.launch">
+  </include>
+
+
+  <!-- ===== UTM 좌표계 기반 Localization (GPS Heading 보정) ===== -->
+  <!-- <node pkg="husky_dwa_navigation" type="path_visualizer.py" name="utm_heading_correction" output="screen">
+    <param name="use_sim_time" value="true" />
+  </node> -->
+
+  <!-- ===== 포인트 클라우드 처리 파이프라인 ===== -->
+  <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" />
+
+  
+  <!-- Ouster 데이터 다운샘플링을 위한 VoxelGrid 필터 -->
+  <node pkg="nodelet" type="nodelet" name="voxel_grid" args="load pcl/VoxelGrid pcl_manager" output="screen">
+    <remap from="~input" to="/ouster/points" />
+    <remap from="~output" to="/points_filtered" />
+    <param name="leaf_size" value="0.10" />
+    <param name="filter_field_name" value="z" />
+    <param name="filter_limit_min" value="-0.85" />
+    <param name="filter_limit_max" value="2" />
+  </node>
+  
+  <!-- PointCloud2를 LaserScan으로 변환 -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+    <remap from="cloud_in" to="/points_filtered"/>
+    <remap from="scan" to="/scan"/>
+    <param name="angle_min" value="-3.14159"/>
+    <param name="angle_max" value="3.14159"/>
+    <param name="min_height" value="-2"/>
+    <param name="max_height" value="3"/>
+    <param name="angle_increment" value="0.01"/>
+  </node>
+
+  <!-- ===== DWA Navigation (Move Base) ===== -->
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find husky_dwa_navigation)/config/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/move_base_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/dwa_local_planner_params.yaml" command="load" />
+    
+    <param name="clearing_rotation_allowed" value="true" />
+    <param name="conservative_clear_costmap" value="true" />
+    <param name="recovery_behavior_enabled" value="true" />
+
+    <param name="controller_patience" value="15.0" />
+    <param name="planner_patience" value="5.0" />
+    <param name="oscillation_timeout" value="10.0" />
+    <param name="oscillation_distance" value="0.5" />
+
+    <!-- 로컬 플래너 설정 -->
+    <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
+
+    <!-- 글로벌 플래너 설정 -->
+    <param name="base_global_planner" value="global_planner/GlobalPlanner" />
+
+    <!-- 플래너 빈도 설정 -->
+    <param name="controller_frequency" value="10.0" />
+    <param name="planner_frequency" value="5.0" />
+
+    <!-- GlobalPlanner 파라미터 -->
+    <param name="GlobalPlanner/allow_unknown" value="true" />
+    <param name="GlobalPlanner/use_dijkstra" value="true" />
+    <param name="GlobalPlanner/use_quadratic" value="true" />
+    <param name="GlobalPlanner/use_grid_path" value="false" />
+    <param name="GlobalPlanner/old_navfn_behavior" value="false" />
+  </node>
+
+  <!-- ===== Navigation Manager ===== -->
+  <node pkg="husky_dwa_navigation" type="navigation_manager_node.py" name="navigation_manager" output="screen">
+    <param name="global_costmap_topic" value="/move_base/global_costmap/costmap" />
+    <param name="robot_base_frame" value="base_link" />
+    <param name="switch_service" value="/move_base/set_parameters" />
+    <param name="planner_type_parameter" value="/move_base/base_global_planner" />
+    <param name="default_planner" value="global_planner/GlobalPlanner" />
+    <param name="check_frequency" value="5.0" />
+    <param name="border_tolerance" value="1.0" />
+  </node>
+
+  <!-- ===== RViz 시각화 (로봇 제어 및 모니터링) ===== -->
+  <!-- 메인 RViz - 로봇 상태 모니터링 및 제어 -->
+  <!-- <node name="rviz" pkg="rviz" type="rviz" 
+        args="-d $(find husky_custom_gazebo)/rviz/husky_ouster_gps.rviz" 
+        output="screen" /> -->
+  <node name="rviz" pkg="rviz" type="rviz" 
+        args="-d $(find faster_lio)/rviz_cfg/loam_livox.rviz" 
+        output="screen" />     
+</launch>

@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>husky_dwa_navigation</name>
+  <version>1.0.0</version>
+  <description>Husky DWA Navigation with GPS/UTM support for Python 3.8</description>
+
+  <maintainer email="your_email@example.com">Your Name</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Build dependencies -->
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>tf2_geometry_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>move_base</build_depend>
+  <build_depend>dwa_local_planner</build_depend>
+  <build_depend>pcl_ros</build_depend>
+  <build_depend>nodelet</build_depend>
+  <build_depend>pointcloud_to_laserscan</build_depend>
+  <build_depend>costmap_2d</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+  <build_depend>geographic_msgs</build_depend>
+  <build_depend>geodesy</build_depend>
+
+  <!-- Exec dependencies -->
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>tf</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>move_base</exec_depend>
+  <exec_depend>dwa_local_planner</exec_depend>
+  <exec_depend>pcl_ros</exec_depend>
+  <exec_depend>nodelet</exec_depend>
+  <exec_depend>pointcloud_to_laserscan</exec_depend>
+  <exec_depend>costmap_2d</exec_depend>
+  <exec_depend>dynamic_reconfigure</exec_depend>
+  <exec_depend>geographic_msgs</exec_depend>
+  <exec_depend>geodesy</exec_depend>
+  <exec_depend>robot_localization</exec_depend>
+
+  <!-- Python 3 dependencies -->
+  <depend>python3-numpy</depend>
+  <depend>python3-tk</depend>
+
+  <export>
+  </export>
+</package>
