@@ -44,7 +44,7 @@ roslaunch husky_dwa_navigation husky_control_nav_localization.launch   # faster-
 - `gps_publisher.py`: GPS 좌표 발행자
 - `waypoints_generator.py`: 웨이포인트 생성 및 발행
 
-### 2. 의미론적 분할 (Semantic Segmentation)
+### 2. 의미론적 분할 (Semantic Segmentation) (아직 추가하지 못함 , 개별 진행)
 LaserMix 기반 반지도 학습을 통한 포인트 클라우드 분류
 
 **주요 참고 자료**:
