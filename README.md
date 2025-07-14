@@ -1,105 +1,77 @@
-# CONTENTS
-- Global Path Planning[[Link](#global-path-planning)]
-- Semantic Segmentation[[Link](#semantic-segmentation)]
-- Local Path Planning[[Link](#local-path-planning)]
+# 전북대학교 자율주행 로봇 시스템
+
+이 저장소는 전북대학교 자율주행 연구실에서 개발한 혁신적인 **맵리스(Map-less) 자율주행 시스템**입니다. 기존 SLAM 기반 시스템과 달리, **고정밀 GPS/RTK 위치 추정**과 **실시간 라이다 센싱**을 결합하여 사전 맵 생성 없이도 안전하고 정확한 자율주행을 구현합니다. 본 시스템은 도심 환경에서의 실용적 자율주행을 목표로 하며, 동적 환경 변화에 강인한 적응형 내비게이션 알고리즘을 특징으로 합니다.
 
 
-# Global Path Planning  
-## repo
-- [global_path_planner](https://github.com/kdh044/global_path)
-- [Odometry](https://github.com/Cascio99/25S_)
-## 명령어
+- 해당 저장소는 gazebo 시뮬레이션 상의 완성 본입니다.  
+**[gazebo_dwa](https://github.com/kyeonghyeon0314/gazebo_dwa/tree/gps_localization)**
+
+
+## 시스템 요구사항
+- Ubuntu 20.04 LTS
+- ROS Noetic
+
+
+## 🎯 시스템 개요
+
+본 시스템은 다음과 같은 주요 기능을 제공합니다:
+
+- **전역 경로 계획**: 웹 기반 GPS 좌표 수집 및 ROS 토픽 발행
+- **의미론적 분할**: FRNet 기반 LaserMix 반지도 학습을 통한 주행가능 영역 분류
+- **지역 경로 계획**: DWA(Dynamic Window Approach)를 통한 장애물 회피
+- **Localization**: Faster-LIO를 통한 경량 라이다-관성 오도메트리
+- **위치 추정**: GPS/RTK와 Ouster 라이다 센서 통합
+
+## 🚀 사용법
+실행 순서
+```bash
+roslaunch husky_dwa_navigation ouster_topics_only.launch               # Ouster 실행
+roslaunch ublox_gps ublox_zed-f9p.launch                               # GPS 실행
+roslaunch husky_dwa_navigation integrated_navigation.launch            # 프레임 설정 , waypoints, global_path, gps+Odom
+roslaunch husky_dwa_navigation husky_control_nav_localization.launch   # faster-lio, DWA, 로봇 스폰 등등 
 ```
-rosrun global_path_planner gps_server.py  
-rosrun global_path_planner gps_publisher.py
-rosrun global_path_planner gps_server.py  
-rostopic echo waypoints
-```
-## 적용 형식
-- 기존 JavaScript 코드 수정: 목적지 검색 창 제거
-- Waypoint 및 목적지의 위도, 경도 값을 ROS 토픽으로 발행하는 기능 추가
-## 실행 흐름
-- gps_server.py 실행 → 웹 프롬프트(Web UI) 띄움
-- gps_publisher.py 실행 → GPS로 좌표 수신
-- 웹페이지에서 목적지 선택 → 카카오 네비 API 활용
-- Waypoint 및 목적지 좌표(위도, 경도) → ROS 토픽으로 전달
-  
 
-# Semantic Segmentation
-## references
+## 🔧 핵심 구성요소
+
+### 1. 전역 경로 계획 (Global Path Planning)
+카카오 내비 API를 활용한 웹 기반 GPS 좌표 수집 시스템
+
+**작성자의 저장소**: 
+[global_path_planner](https://github.com/kdh044/global_path)
+
+**주요 스크립트**:
+- `gps_server.py`: 목적지 선택을 위한 웹 UI 서버
+- `gps_publisher.py`: GPS 좌표 발행자
+- `waypoints_generator.py`: 웨이포인트 생성 및 발행
+
+### 2. 의미론적 분할 (Semantic Segmentation)
+LaserMix 기반 반지도 학습을 통한 포인트 클라우드 분류
+
+**주요 참고 자료**:
 - [LaserMix](https://github.com/ldkong1205/LaserMix)
 - [FRNet](https://github.com/Xiangxu-0103/FRNet)
-## 적용 형식
-- LaserMix의 teacher-student network 반지도학습 프레임을 이용
-- teacher network에 선행학습된 checkpoints 적용
-- 클래수 MMdetection 기준의 20개에서 5개로 변경 (road, car, sidewalk, other-vehicle, unlabeled)
 
-<div align="center">
-  <div style="margin-bottom: 10px;">
-    <img src="/img/semantic_segmentation/lasermix.png" width="50%">
-    <p style="text-align: center;">수정된 LaserMix</p>
-  </div>
-</div>
+**작성자의 저장소**:
+- [FRNet_ROS : tomark](https://github.com/t0mark/FRNet_ROS)
+- [FRNet-LaserMix : kyeonghyeon0314](https://github.com/kyeonghyeon0314/FRNet-LaserMix)
 
-### 개선 사항
-- car를 제외한 나머지 vehicle을 other-vehicle로 묶고 향상된 학습법으로 학습했을시, **IoU**(67.45, 61.93) 점수가 **1.87%, 7.39%** 향상한것을 보였습니다.
-- 최종적으로 논문의 ***mIoU*** 점수(74.69, 84.75) 보다 약 **13%, 2.92%** 향상한 **87.67%** 의 결과를 보였습니다.
-
-## 코드
-- [FRNet-LaserMix](https://github.com/kyeonghyeon0314/FRNet-LaserMix)
+**개선 사항**:
+- 클래스 수를 20개에서 5개로 축소 (road, car, sidewalk, other-vehicle, unlabeled)
+- IoU 점수 향상: 67.45% → 69.32%, 61.93% → 69.32%
+- 최종 mIoU 점수: 87.67% (원논문 대비 13% 향상)
 
 
-  
-# Local Path Planning
-## Local Path Planner[[RL-DWA](https://github.com/BlackTea12/RL-DWA)]
-## Localization
+### 3. 지역 경로 계획 (Local Path Planning)
+DWA 알고리즘을 이용한 장애물 회피 및 지역 경로 계획
 
---[local_path_planner](https://github.com/kdh044/Jbnu-Final/tree/main)
-### 필수 패키지 설치 (Ubuntu 20.04 + ROS Noetic 기준)
-```bash
-sudo apt update && sudo apt install -y \
-ros-noetic-husky-desktop \
-ros-noetic-husky-simulator \
-ros-noetic-ackermann-msgs \
-ros-noetic-twist-mux \
-ros-noetic-teleop-twist-keyboard \
-ros-noetic-robot-localization \
-ros-noetic-joint-state-publisher-gui \
-ros-noetic-xacro \
-ros-noetic-gazebo-ros-pkgs \
-ros-noetic-gazebo-ros-control
-```
-
-#### 실행 명령어
-```bash
-roslaunch husky_dwa husky_dwa_gazebo.launch
-roslaunch husky_dwa move_base.launch
-```
-
----
-
-# 아직 지우지 마세요 나중에 활용 예정
-<div align="center">
-  <div style="margin-bottom: 10px;">
-    <img src="/img/semantic_segmentation/root_directory.png" width="10%">
-    <p style="text-align: center;">최상위 디렉토리</p>
-  </div>
-  <div style="margin-bottom: 10px;">
-    <img src="/img/semantic_segmentation/save_directory.png" width="10%">
-    <p style="text-align: center;">tmp</p>
-  </div>
-</div>
+**작성자의 저장소**: 
+- [gazebo_dwa : kyeonghyeon0314](https://github.com/kyeonghyeon0314/gazebo_dwa/tree/main)
+- [local_path_planner : kdh044](https://github.com/kdh044/Jbnu-Final/tree/main)
 
 
-## 맵 정보
-- [**mapping_01.pcd**](/img/map/mapping_01.png) : 6호관 7호관 사이
-- [**mapping_02.pcd**](/img/map/mapping_02.png) : 제2도서관 연구단지? 쪽 길
-- [**mapping_03.pcd**](/img/map/mapping_03.png) : 농대 쪽 큰길 -> 중도 정문쪽
-- [**mapping_04.pcd**](/img/map/mapping_04.png) : 건지광장
-- [**mapping_05.pcd**](/img/map/mapping_05.png) : 7호관 -> 2호관 -> 4호관 -> 3호관 -> 공대입구 -> 내리막
-- [**mapping_06.pcd**](/img/map/mapping_06.png) : 자연대 본관과 3호관
-- [**mapping_07.pcd**](/img/map/mapping_07.png) : 공대 입구-> 내리막 -> 진수당 한바퀴
-- [**mapping_08.pcd**](/img/map/mapping_08.png) : 진수당 주차장 -> 법대 오르막 오른뒤 한바퀴-> 본부별관 앞 주차장 순회
-- [**mapping_09.pcd**](/img/map/mapping_09.png) : 법대,글로벌 인재관 사이 오르막 오르고난 후 장소 -> 제2도서관 (loop closer 없음)
-- [**mapping_10.pcd**](/img/map/mapping_10.png) : 경상대 2호관 에서 법대내리막
-- [**mapping_11.pcd**](/img/map/mapping_11.png) : 공대 공장동 앞 -> 7호관 - > 6호관-> 제2도서관-> 연구실 단지 -> 후생관쪽 문-> 농대길->중도 정문 -> 후생관 -> 경상대 2호관-> 인문대 -> 실크로드 센터 -> 공대 오르막
+### 4. Localization (Faster-LIO)
+Faster-LIO의 Iterated Error State Kalman Filter를 그대로 사용
+**변경사항** :
+- Hash map capacity를 100,000d으로 축소
+- z축으로 정사영
+- map 생성 알고리즘 삭제

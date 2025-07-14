@@ -1,0 +1,57 @@
+# DWAPlannerROS:
+#   # Husky A200 사양에 맞는 로봇 설정
+#   max_vel_x: 1.0      # 최대 전진 속도 (m/s)
+#   min_vel_x: -1.0      # 최소 전진 속도 (m/s)
+#   max_vel_y: 0.0
+#   min_vel_y: 0.0
+#   max_vel_trans: 1.0  # 최대 이동 속도 (m/s)
+#   min_vel_trans: 0.1  # 최소 이동 속도 (m/s)
+#   max_vel_theta: 1.7  # 최대 회전 속도 (rad/s)
+#   min_vel_theta: 0.08  # 최소 회전 속도 (rad/s)
+#   acc_lim_x: 3.0      # X축 가속도 제한 (m/s^2)
+#   acc_lim_y: 0.0      # Y축 가속도 제한 (m/s^2)
+#   acc_lim_theta: 6.0  # 회전 가속도 제한 (rad/s^2)
+DWAPlannerROS:
+  # Husky A200 고성능 설정 (max_vel_x: 5.0 기준)
+  max_vel_x: 5.0        # 최대 전진 속도 (m/s)
+  min_vel_x: 0.0       # 최소 전진 속도 (m/s) - 후진 속도
+  max_vel_y: 0.0        # 차동구동 로봇이므로 Y축 속도 없음
+  min_vel_y: 0.0
+  max_vel_trans: 5.0    # 최대 이동 속도 (m/s)
+  min_vel_trans: 0.5    # 최소 이동 속도 (m/s) - 원래의 5배
+  max_vel_theta: 8.5    # 최대 회전 속도 (rad/s) - 원래의 5배
+  min_vel_theta: 0.4    # 최소 회전 속도 (rad/s) - 원래의 5배
+  acc_lim_x: 15.0       # X축 가속도 제한 (m/s^2) - 원래의 5배
+  acc_lim_y: 0.0        # Y축 가속도 제한 (차동구동이므로 0)
+  acc_lim_theta: 30.0   # 회전 가속도 제한 (rad/s^2) - 원래의 5배
+
+  # 목표 도달 허용치
+  xy_goal_tolerance: 10   # 위치 허용 오차 (m)
+  yaw_goal_tolerance: 3.14  # 방향 허용 오차 (rad)
+  latch_xy_goal_tolerance: True  # 위치 도달 후 회전만 허용
+  penalize_negative_x: false  # 후진보다 제자리 회전 선호
+  
+  # 경로 평가 매개변수
+  path_distance_bias: 80.0      # 글로벌 경로 따르기 가중치
+  goal_distance_bias: 15.0      # 목표 향하는 가중치
+  occdist_scale: 0.08           # 장애물 회피 가중치
+  forward_point_distance: 0.325 # 로봇 앞쪽 참조점 거리
+  stop_time_buffer: 0.2         # 정지 시간 버퍼
+  scaling_speed: 0.25           # 속도 스케일링 임계값
+  max_scaling_factor: 0.2       # 최대 스케일링 팩터
+  
+  # 시뮬레이션 매개변수
+  sim_time: 2.5           # 경로 시뮬레이션 시간 (s)
+  sim_granularity: 0.02  # 시뮬레이션 단계 크기 (m)
+  vx_samples: 15          # x 속도 샘플 수
+  vy_samples: 0           # y 속도 샘플 수 (비홀로노믹)
+  vth_samples: 80         # 회전 속도 샘플 수
+  controller_frequency: 10.0  # 컨트롤러 주기 (Hz)
+  
+  # 진동 방지
+  oscillation_reset_dist: 0.1  # 진동 감지 거리 (m)
+  
+  # 시각화 설정
+  publish_traj_pc: true        # 궤적 포인트 클라우드 발행
+  publish_cost_grid_pc: true   # 비용 그리드 발행
+  global_frame_id: utm_local     # 전역 프레임 ID
