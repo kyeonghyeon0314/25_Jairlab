@@ -276,7 +276,7 @@ class UTMLocalHeadingCorrection:
     def perform_gradual_heading_correction(self):
         """🔄 점진적 Heading 보정"""
         if len(self.corrected_trajectory_local) < 3 or len(self.gps_trajectory_local) < 3:
-            rospy.loginfo_throttle(30, f"⏳ 점진적 보정용 데이터 부족 (FasterLIO: {len(self.corrected_trajectory_local)}, GPS: {len(self.gps_trajectory_local)})")
+            rospy.loginfo(f"⏳ 점진적 보정용 데이터 부족 (FasterLIO: {len(self.corrected_trajectory_local)}, GPS: {len(self.gps_trajectory_local)})")
             return False
         
         # 최신 3개 포인트 사용 (더 반응성 높임)
@@ -297,8 +297,8 @@ class UTMLocalHeadingCorrection:
         gps_dy = gps_end["y"] - gps_start["y"]
         gps_distance = math.sqrt(gps_dx**2 + gps_dy**2)
         
-        if corrected_distance < 0.5 or gps_distance < 0.5:
-            rospy.loginfo_throttle(30, f"⏳ 보정 거리 부족 (FasterLIO: {corrected_distance:.1f}m, GPS: {gps_distance:.1f}m)")
+        if corrected_distance < 0.3 or gps_distance < 0.3:
+            rospy.loginfo( f"⏳ 보정 거리 부족 (FasterLIO: {corrected_distance:.1f}m, GPS: {gps_distance:.1f}m)")
             return False
         
         corrected_heading = math.atan2(corrected_dy, corrected_dx)
@@ -310,12 +310,12 @@ class UTMLocalHeadingCorrection:
         while angle_diff < -math.pi:
             angle_diff += 2 * math.pi
         
-        if abs(angle_diff) < math.radians(2.0):
-            rospy.loginfo_throttle(30, f"✅ Heading 정렬 양호 (차이: {math.degrees(angle_diff):.1f}도)")
+        if abs(angle_diff) < math.radians(3.0):
+            rospy.loginfo( f"✅ Heading 정렬 양호 (차이: {math.degrees(angle_diff):.1f}도)")
             return False
         
         # 점진적 보정 (20%씩 적용하여 더 빠른 수렴)
-        additional_correction = angle_diff * 0.2
+        additional_correction = angle_diff * 0.08
         old_correction = self.correction_system["heading_correction"]
         self.correction_system["heading_correction"] += additional_correction
         

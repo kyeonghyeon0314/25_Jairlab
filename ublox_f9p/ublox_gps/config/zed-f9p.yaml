@@ -8,6 +8,16 @@ frame_id: gps
 uart1:
   baudrate: 460800
 
+# GNSS Configuration
+gnss:
+  gps: true
+  glonass: true
+  galileo: true
+  beidou: true
+  qzss: true
+  sbas: true
+  imes: false
+
 # Enable u-blox message publishers
 publish:
   all: false
@@ -16,4 +26,3 @@ publish:
     relposned: true
     posllh: true
     posecef: true
-

@@ -1,0 +1,68 @@
+● GNSS 시스템 설정을 추가했지만 여전히 service가 0으로 나오는 이유를 찾았습니다.
+
+  근본 원인: UBlox GPS 드라이버 코드에 버그가 있습니다.
+
+  /home/kimkh/husky_ws/src/ublox_f9p/ublox_gps/src/node.cpp:825에서:
+
+  fix_.status.service = fix_.status.SERVICE_GPS;  // 버그: 하드코딩됨
+
+  이 부분을 다음과 같이 수정해야 합니다:
+
+  fix_.status.service = fix_status_service;  // 계산된 service 상태 사용
+
+  해결 방법:
+
+  1. 코드 수정: 위 라인을 수정하여 다중 GNSS 시스템 지원
+  2. 디버깅 활성화: debug: 4로 설정하여 상세 로그 확인
+  3. 실시간 모니터링:
+  rostopic echo /ublox_gps/fix
+  rostopic echo /ublox_gps/navstatus
+
+  예상 결과:
+  - GPS(1) + GLONASS(2) + BeiDou(4) + Galileo(8) = service: 15
+
+  이 버그를 수정하면 여러 GNSS 시스템을 제대로 인식하게 됩니다.
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+● Update(src/ublox_f9p/ublox_gps/src/node.cpp)
+  ⎿  Updated src/ublox_f9p/ublox_gps/src/node.cpp with 3 additions
+       42    
+       43    using namespace ublox_node;
+       44    
+       45 +  // Define constexpr static members
+       46 +  constexpr int UbloxNode::kResetWait;
+       47 +  
+       48    //
+       49    // ublox_node namespace
+       50    //
+
+● Update Todos
+  ⎿  ☒ node.cpp 파일 확인 및 kResetWait 상수 정의 추가        
+     ☐ gps.cpp 파일 확인 및 kSetBaudrateSleepMs 상수 정의 추가
+
+● Read(src/ublox_f9p/ublox_gps/src/gps.cpp)
+  ⎿  Read 50 lines (ctrl+r to expand)
+
+● Search(pattern: "constexpr.*kSetBaudrateSleepMs", path: "src/ublox_f9p/ublox_gps/src/gps.cpp", output_mode: "content")
+  ⎿  Found 0 lines 
+
+● Update(src/ublox_f9p/ublox_gps/src/gps.cpp)
+  ⎿  Updated src/ublox_f9p/ublox_gps/src/gps.cpp with 3 additions          
+       34    
+       35    using namespace ublox_msgs;
+       36    
+       37 +  // Define constexpr static members
+       38 +  constexpr int Gps::kSetBaudrateSleepMs;
+       39 +  
+       40    const boost::posix_time::time_duration Gps::default_timeout_ =
+       41        boost::posix_time::milliseconds(
+       42            static_cast<int>(Gps::kDefaultAckTimeout * 1000));

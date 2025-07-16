@@ -1,32 +1,20 @@
-# DWAPlannerROS:
-#   # Husky A200 사양에 맞는 로봇 설정
-#   max_vel_x: 1.0      # 최대 전진 속도 (m/s)
-#   min_vel_x: -1.0      # 최소 전진 속도 (m/s)
-#   max_vel_y: 0.0
-#   min_vel_y: 0.0
-#   max_vel_trans: 1.0  # 최대 이동 속도 (m/s)
-#   min_vel_trans: 0.1  # 최소 이동 속도 (m/s)
-#   max_vel_theta: 1.7  # 최대 회전 속도 (rad/s)
-#   min_vel_theta: 0.08  # 최소 회전 속도 (rad/s)
-#   acc_lim_x: 3.0      # X축 가속도 제한 (m/s^2)
-#   acc_lim_y: 0.0      # Y축 가속도 제한 (m/s^2)
-#   acc_lim_theta: 6.0  # 회전 가속도 제한 (rad/s^2)
 DWAPlannerROS:
-  # Husky A200 고성능 설정 (max_vel_x: 5.0 기준)
-  max_vel_x: 5.0        # 최대 전진 속도 (m/s)
-  min_vel_x: 0.0       # 최소 전진 속도 (m/s) - 후진 속도
-  max_vel_y: 0.0        # 차동구동 로봇이므로 Y축 속도 없음
+  # Husky A200 사양에 맞는 로봇 설정
+  max_vel_x: 1.3      # 최대 전진 속도 (m/s)
+  min_vel_x: -1.0      # 최소 전진 속도 (m/s)
+  max_vel_y: 0.0
   min_vel_y: 0.0
-  max_vel_trans: 5.0    # 최대 이동 속도 (m/s)
-  min_vel_trans: 0.5    # 최소 이동 속도 (m/s) - 원래의 5배
-  max_vel_theta: 8.5    # 최대 회전 속도 (rad/s) - 원래의 5배
-  min_vel_theta: 0.4    # 최소 회전 속도 (rad/s) - 원래의 5배
-  acc_lim_x: 15.0       # X축 가속도 제한 (m/s^2) - 원래의 5배
-  acc_lim_y: 0.0        # Y축 가속도 제한 (차동구동이므로 0)
-  acc_lim_theta: 30.0   # 회전 가속도 제한 (rad/s^2) - 원래의 5배
+  max_vel_trans: 1.0  # 최대 이동 속도 (m/s)
+  min_vel_trans: 0.1  # 최소 이동 속도 (m/s)
+  max_vel_theta: 0.8  # 최대 회전 속도 (rad/s)
+  min_vel_theta: 0.08  # 최소 회전 속도 (rad/s)
+  acc_lim_x: 3.0      # X축 가속도 제한 (m/s^2)
+  acc_lim_y: 0.0      # Y축 가속도 제한 (m/s^2)
+  acc_lim_theta: 1.0  # 회전 가속도 제한 (rad/s^2)
+
 
   # 목표 도달 허용치
-  xy_goal_tolerance: 10   # 위치 허용 오차 (m)
+  xy_goal_tolerance: 3   # 위치 허용 오차 (m)
   yaw_goal_tolerance: 3.14  # 방향 허용 오차 (rad)
   latch_xy_goal_tolerance: True  # 위치 도달 후 회전만 허용
   penalize_negative_x: false  # 후진보다 제자리 회전 선호

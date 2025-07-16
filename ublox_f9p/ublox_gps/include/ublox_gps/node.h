@@ -822,7 +822,25 @@ class UbloxFirmware7Plus : public UbloxFirmware {
       fix.status.status = fix.status.STATUS_NO_FIX;
     }
     // Set the service based on GNSS configuration
-    fix.status.service = fix_status_service;
+    if (fix_status_service == 0) {
+      // Calculate service field based on ROS parameters
+      bool enable_gps = nh->param("gnss/gps", true);
+      bool enable_glonass = nh->param("gnss/glonass", true);
+      bool enable_galileo = nh->param("gnss/galileo", true);
+      bool enable_beidou = nh->param("gnss/beidou", true);
+      
+      int calculated_service = sensor_msgs::NavSatStatus::SERVICE_GPS
+        + (enable_glonass ? 1 : 0) * sensor_msgs::NavSatStatus::SERVICE_GLONASS
+        + (enable_beidou ? 1 : 0) * sensor_msgs::NavSatStatus::SERVICE_COMPASS
+        + (enable_galileo ? 1 : 0) * sensor_msgs::NavSatStatus::SERVICE_GALILEO;
+      
+      fix.status.service = calculated_service;
+      ROS_INFO_THROTTLE(10.0, "Calculated service: %d (GPS:%d, GLO:%d, GAL:%d, BEI:%d)", 
+                       calculated_service, enable_gps, enable_glonass, enable_galileo, enable_beidou);
+    } else {
+      fix.status.service = fix_status_service;
+    }
+    ROS_INFO_THROTTLE(5.0, "Publishing fix with service: %d", fix.status.service);
 
     // Set the position covariance
     const double varH = pow(m.hAcc / 1000.0, 2); // to [m^2]
