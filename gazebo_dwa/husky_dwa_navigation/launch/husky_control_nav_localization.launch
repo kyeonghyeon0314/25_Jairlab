@@ -63,6 +63,7 @@
     <param name="publish_frequency" value="50"/>
   </node>
 
+  <!-- 조이스틱 조종을 우선순위로 설정할수 있는 노드 -->
   <node pkg="twist_mux" type="twist_mux" name="twist_mux">
     <rosparam command="load" file="$(find husky_control)/config/twist_mux.yaml" />
     <remap from="cmd_vel_out" to="husky_velocity_controller/cmd_vel"/>
@@ -75,16 +76,8 @@
   <include file="$(find faster_lio)/launch/mapping_ouster32.launch">
   </include>
 
-
-  <!-- ===== UTM 좌표계 기반 Localization (GPS Heading 보정) ===== -->
-  <!-- <node pkg="husky_dwa_navigation" type="path_visualizer.py" name="utm_heading_correction" output="screen">
-    <param name="use_sim_time" value="true" />
-  </node> -->
-
   <!-- ===== 포인트 클라우드 처리 파이프라인 ===== -->
   <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" />
-
-  
   <!-- Ouster 데이터 다운샘플링을 위한 VoxelGrid 필터 -->
   <node pkg="nodelet" type="nodelet" name="voxel_grid" args="load pcl/VoxelGrid pcl_manager" output="screen">
     <remap from="~input" to="/ouster/points" />
@@ -108,38 +101,17 @@
 
   <!-- ===== DWA Navigation (Move Base) ===== -->
   <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <!-- Costmap 설정 -->
     <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="global_costmap" />
     <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />
     <rosparam file="$(find husky_dwa_navigation)/config/local_costmap_params.yaml" command="load" />
     <rosparam file="$(find husky_dwa_navigation)/config/global_costmap_params.yaml" command="load" />
-    <rosparam file="$(find husky_dwa_navigation)/config/move_base_params.yaml" command="load" />
-    <rosparam file="$(find husky_dwa_navigation)/config/dwa_local_planner_params.yaml" command="load" />
     
-    <param name="clearing_rotation_allowed" value="true" />
-    <param name="conservative_clear_costmap" value="true" />
-    <param name="recovery_behavior_enabled" value="true" />
-
-    <param name="controller_patience" value="15.0" />
-    <param name="planner_patience" value="5.0" />
-    <param name="oscillation_timeout" value="10.0" />
-    <param name="oscillation_distance" value="0.5" />
-
-    <!-- 로컬 플래너 설정 -->
-    <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
-
-    <!-- 글로벌 플래너 설정 -->
-    <param name="base_global_planner" value="global_planner/GlobalPlanner" />
-
-    <!-- 플래너 빈도 설정 -->
-    <param name="controller_frequency" value="10.0" />
-    <param name="planner_frequency" value="5.0" />
-
-    <!-- GlobalPlanner 파라미터 -->
-    <param name="GlobalPlanner/allow_unknown" value="true" />
-    <param name="GlobalPlanner/use_dijkstra" value="true" />
-    <param name="GlobalPlanner/use_quadratic" value="true" />
-    <param name="GlobalPlanner/use_grid_path" value="false" />
-    <param name="GlobalPlanner/old_navfn_behavior" value="false" />
+    <!-- 로봇 동역학 파라미터 -->
+    <rosparam file="$(find husky_dwa_navigation)/config/robot_dynamics_params.yaml" command="load" />
+    
+    <!-- 경로 계획 파라미터 -->
+    <rosparam file="$(find husky_dwa_navigation)/config/path_planning_params.yaml" command="load" />
   </node>
 
   <!-- ===== Navigation Manager ===== -->

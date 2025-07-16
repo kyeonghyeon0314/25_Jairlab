@@ -5,10 +5,11 @@ controller_patience: 15.0
 conservative_reset_dist: 3.0
 planner_frequency: 5.0
 oscillation_timeout: 10.0     # 진동 감지 시간 (초)
-oscillation_distance: 0.1    # 진동 감지 거리 (m)
+oscillation_distance: 0.5    # 진동 감지 거리 (m) - launch 파일에서 이동
 oscillation_reset_dist: 0.5  # 진동 리셋 거리 (m)
 recovery_behavior_enabled: true
 clearing_rotation_allowed: true
+conservative_clear_costmap: true  # launch 파일에서 이동
 
 
 

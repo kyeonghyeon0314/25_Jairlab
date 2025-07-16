@@ -1,6 +1,6 @@
 DWAPlannerROS:
   # Husky A200 사양에 맞는 로봇 설정
-  max_vel_x: 1.3      # 최대 전진 속도 (m/s)
+  max_vel_x: 1.0      # 최대 전진 속도 (m/s)
   min_vel_x: -1.0      # 최소 전진 속도 (m/s)
   max_vel_y: 0.0
   min_vel_y: 0.0

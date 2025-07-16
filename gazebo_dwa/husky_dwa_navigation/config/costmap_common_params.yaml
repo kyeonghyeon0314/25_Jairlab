@@ -19,37 +19,6 @@ obstacles_laser:
             obstacle_range: 40,
             raytrace_range: 45,
             observation_persistence: 0}
-
-
-# # Voxel 그리드 레이어 설정 (3D 장애물 감지용)
-# voxel_layer:
-#   enabled: true                     # 3D 장애물 감지 레이어 활성화
-#   publish_voxel_map: true           # voxel map을 ROS topic으로 publish (디버깅용)
-#   origin_z: -1.0                    # z축 원점 (지면 아래 포함)
-#   z_resolution: 0.1                 # z축 해상도
-#   z_voxels: 20                      # z축 voxel 수
-#   max_obstacle_height: 2.0          # 최대 장애물 높이
-#   unknown_threshold: 15             # 알 수 없는 상태로 표시하기 위한 임계값
-#   mark_threshold: 0                 # 장애물로 표시하기 위한 임계값
-#   combination_method: 0             # 센서 데이터 결합 방법 , 1: 최대값, 0: 평균값
-#   track_unknown_space: true         # 알 수 없는 공간(센서 미관측 영역)도 costmap에 표시
-#   obstacle_range: 10.0              # 장애물 감지 범위
-#   raytrace_range: 15.0              # 장애물 제거 최대 거리 (m)
-#   footprint_clearing_enabled: true  # 로봇 내부 영역 항상 클리어
-#   observation_sources: point_cloud_sensor
-
-#   # 벨로다인 포인트 클라우드 설정
-#   point_cloud_sensor:
-#     data_type: PointCloud2
-#     topic: /points_filtered  # 필터링된 최종 포인트 클라우드
-#     sensor_frame: velodynes
-#     marking: true                 # 장애물로 인식
-#     clearing: true                # 장애물 제거
-#     min_obstacle_height: -0.05     # 감지할 최소 장애물 높이(m)
-#     max_obstacle_height: 1.8      # 감지할 최대 장애물 높이 (m)
-#     observation_persistence: 0  # 관측 유지 시간 (0: 즉시 업데이트)
-#     expected_update_rate: 10.0    # 예상 업데이트 빈도 (Hz)
-#     voxel_min_points: 3        # 최소 포인트 수(이것보다 적으면 무시)
     
 # 인플레이션 레이어 설정  [장애물 주변에 추가적인 안전 영역(비용)을 부여하는 레이어입니다.]
 inflation_layer:

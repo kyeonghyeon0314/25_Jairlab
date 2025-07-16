@@ -1,0 +1,36 @@
+# =============================================================================
+# 로봇 동역학 파라미터 설정
+# Husky A200 사양에 맞는 속도 및 가속도 제한 설정
+# =============================================================================
+
+DWAPlannerROS:
+  # 속도 제한 설정
+  max_vel_x: 1.0      # 최대 전진 속도 (m/s)
+  min_vel_x: -1.0     # 최소 전진 속도 (m/s) - 후진 포함
+  max_vel_y: 0.0      # 최대 Y축 속도 (비홀로노믹 로봇이므로 0)
+  min_vel_y: 0.0      # 최소 Y축 속도 (비홀로노믹 로봇이므로 0)
+  max_vel_trans: 1.0  # 최대 이동 속도 (m/s)
+  min_vel_trans: 0.1  # 최소 이동 속도 (m/s)
+  max_vel_theta: 0.8  # 최대 회전 속도 (rad/s)
+  min_vel_theta: 0.08 # 최소 회전 속도 (rad/s)
+  
+  # 가속도 제한 설정
+  acc_lim_x: 3.0      # X축 가속도 제한 (m/s^2)
+  acc_lim_y: 0.0      # Y축 가속도 제한 (m/s^2) - 비홀로노믹 로봇이므로 0
+  acc_lim_theta: 1.0  # 회전 가속도 제한 (rad/s^2)
+  
+  # 목표 도달 허용치
+  xy_goal_tolerance: 3        # 위치 허용 오차 (m)
+  yaw_goal_tolerance: 3.14    # 방향 허용 오차 (rad)
+  latch_xy_goal_tolerance: true  # 위치 도달 후 회전만 허용
+  
+  # 로봇 행동 설정
+  penalize_negative_x: false  # 후진보다 제자리 회전 선호 설정
+  
+  # 안전 설정
+  stop_time_buffer: 0.2       # 정지 시간 버퍼 (s)
+  scaling_speed: 0.25         # 속도 스케일링 임계값 (m/s)
+  max_scaling_factor: 0.2     # 최대 스케일링 팩터
+  
+  # 진동 방지
+  oscillation_reset_dist: 0.1 # 진동 감지 거리 (m)
