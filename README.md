@@ -26,7 +26,11 @@
 실행 순서
 ```bash
 roslaunch husky_dwa_navigation ouster_topics_only.launch               # Ouster 실행
-roslaunch ublox_gps ublox_zed-f9p.launch                               # GPS 실행
+roslaunch ublox_gps ublox_device.launch                                # GPS 실행
+# 설치 필요
+sudo apt-get install ros-noetic-nmea-msgs
+
+
 roslaunch husky_dwa_navigation integrated_navigation.launch            # 프레임 설정 , waypoints, global_path, gps+Odom
 roslaunch husky_dwa_navigation husky_control_nav_localization.launch   # faster-lio, DWA, 로봇 스폰 등등
 python3 move_front.py                                                  # 직선주행으로 초기 Heading 맞추기 

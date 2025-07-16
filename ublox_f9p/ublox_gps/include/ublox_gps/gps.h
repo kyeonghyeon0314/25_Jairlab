@@ -62,7 +62,8 @@ constexpr static unsigned int kBaudrates[] = { 4800,
                                                57600,
                                                115200,
                                                230400,
-                                               460800 };
+                                               460800,
+                                               921600 };
 /**
  * @brief Handles communication with and configuration of the u-blox device
  */

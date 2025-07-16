@@ -3,7 +3,7 @@
 device: /dev/ttyACM0
 frame_id: gps
 uart1:
-  baudrate: 460800
+  baudrate: 921600
 config_on_startup: true
 rate: 20                      # in Hz 
 nav_rate: 1                 # [# of measurement cycles] for 20Hz
