@@ -42,7 +42,6 @@ ros::Subscriber subRTCM;
 
 using namespace ublox_node;
 
-// Define constexpr static members
 constexpr int UbloxNode::kResetWait;
 
 //
@@ -825,7 +824,7 @@ void UbloxFirmware6::callbackNavPosLlh(const ublox_msgs::NavPOSLLH& m) {
   fix_.position_covariance_type =
       sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 
-  fix_.status.service = fix_status_service;
+  fix_.status.service = fix_.status.SERVICE_GPS;
   fixPublisher.publish(fix_);
   last_nav_pos_ = m;
   //  update diagnostics
@@ -887,11 +886,11 @@ void UbloxFirmware7::getRosParams() {
   //
   // GNSS enable/disable
   nh->param("gnss/gps", enable_gps_, true);
-  nh->param("gnss/glonass", enable_glonass_, true);
-  nh->param("gnss/qzss", enable_qzss_, true);
+  nh->param("gnss/glonass", enable_glonass_, false);
+  nh->param("gnss/qzss", enable_qzss_, false);
   getRosUint("gnss/qzss_sig_cfg", qzss_sig_cfg_,
               ublox_msgs::CfgGNSS_Block::SIG_CFG_QZSS_L1CA);
-  nh->param("gnss/sbas", enable_sbas_, true);
+  nh->param("gnss/sbas", enable_sbas_, false);
 
   if(enable_gps_ && !supportsGnss("GPS"))
     ROS_WARN("gnss/gps is true, but GPS GNSS is not supported by this device");
@@ -1066,19 +1065,18 @@ void UbloxFirmware7::subscribe() {
 UbloxFirmware8::UbloxFirmware8() {}
 
 void UbloxFirmware8::getRosParams() {
-  ROS_INFO("UbloxFirmware8::getRosParams() called");
   // UPD SOS configuration
   nh->param("clear_bbr", clear_bbr_, false);
   gps.setSaveOnShutdown(nh->param("save_on_shutdown", false));
 
   // GNSS enable/disable
   nh->param("gnss/gps", enable_gps_, true);
-  nh->param("gnss/galileo", enable_galileo_, true);
-  nh->param("gnss/beidou", enable_beidou_, true);
+  nh->param("gnss/galileo", enable_galileo_, false);
+  nh->param("gnss/beidou", enable_beidou_, false);
   nh->param("gnss/imes", enable_imes_, false);
-  nh->param("gnss/glonass", enable_glonass_, true);
-  nh->param("gnss/qzss", enable_qzss_, true);
-  nh->param("gnss/sbas", enable_sbas_, true);
+  nh->param("gnss/glonass", enable_glonass_, false);
+  nh->param("gnss/qzss", enable_qzss_, false);
+  nh->param("gnss/sbas", enable_sbas_, false);
   // QZSS Signal Configuration
   getRosUint("gnss/qzss_sig_cfg", qzss_sig_cfg_,
               ublox_msgs::CfgGNSS_Block::SIG_CFG_QZSS_L1CA);
@@ -1108,9 +1106,6 @@ void UbloxFirmware8::getRosParams() {
       + (enable_glonass_ ? 1 : 0) * sensor_msgs::NavSatStatus::SERVICE_GLONASS
       + (enable_beidou_ ? 1 : 0) * sensor_msgs::NavSatStatus::SERVICE_COMPASS
       + (enable_galileo_ ? 1 : 0) * sensor_msgs::NavSatStatus::SERVICE_GALILEO;
-
-  ROS_INFO("fix_status_service calculated: %d (GPS:%d, GLO:%d, BEI:%d, GAL:%d)", 
-            fix_status_service, enable_gps_, enable_glonass_, enable_beidou_, enable_galileo_);
 
   //
   // NMEA Configuration

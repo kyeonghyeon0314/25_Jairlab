@@ -2,7 +2,7 @@
 
 <launch>
  <include file="$(find ublox_gps)/launch/ublox_device.launch">
-  <arg name="node_name" value="ublox"/>
+  <arg name="node_name" value="ublox_gps"/>
   <arg name="param_file_name" value="zed-f9p"/>
   <arg name="output" value="screen"/>
   <arg name="respawn" value="true"/>
@@ -10,3 +10,4 @@
   <arg name="clear_params" value="false"/>
  </include>
 </launch>
+

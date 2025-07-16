@@ -34,7 +34,6 @@ namespace ublox_gps {
 
 using namespace ublox_msgs;
 
-// Define constexpr static members
 constexpr int Gps::kSetBaudrateSleepMs;
 
 const boost::posix_time::time_duration Gps::default_timeout_ =
