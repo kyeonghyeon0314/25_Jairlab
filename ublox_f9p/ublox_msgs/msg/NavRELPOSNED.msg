@@ -9,7 +9,7 @@
 # defined at the reference station
 #
 # Supported on:
-#  - u-blox 9 with protocol version 27.1 (only
+#  - u-blox 8 / u-blox M8 from protocol version 20 up to version 23.01 (only
 #    with High Precision GNSS products)
 #
 
@@ -20,7 +20,7 @@ uint8 version                     # Message version (0x00 for this version)
 uint8 reserved0                   # Reserved
 uint16 refStationId               # Reference Station ID. Must be in the range 
                                   # 0..4095
-uint32 iTow                       # GPS time of week of the navigation epoch 
+uint32 iTOW                       # GPS time of week of the navigation epoch 
                                   # [ms]
 
 int32 relPosN                     # North component of relative position vector 
@@ -29,13 +29,6 @@ int32 relPosE                     # East component of relative position vector
                                   # [cm]
 int32 relPosD                     # Down component of relative position vector
                                   # [cm]
-int32 relPosLength
-
-int32 relPosHeading
-
-uint32 reserved1
-
-
 
 int8 relPosHPN                    # High-precision North component of relative
                                   # position vector. [0.1 mm]
@@ -56,7 +49,7 @@ int8 relPosHPD                    # High-precision Down component of relative
                                   # position vector, in units of cm, is given by
                                   # relPosD + (relPosHPD * 1e-2)
 
-uint8 relPosHPLength
+uint8 reserved1                   # Reserved
 
 uint32 accN                       # Accuracy of relative position North 
                                   # component [0.1 mm]
@@ -64,12 +57,6 @@ uint32 accE                       # Accuracy of relative position East component
                                   # [0.1 mm]
 uint32 accD                       # Accuracy of relative position Down component
                                   # [0.1 mm]
-
-uint32 accLength
-
-uint32 accHeading
-
-uint32 reserved2
 
 uint32 flags
 uint32 FLAGS_GNSS_FIX_OK = 1      # A valid fix (i.e within DOP & accuracy 

@@ -33,9 +33,12 @@
 #include <ublox_msgs/NavCLOCK.h>
 #include <ublox_msgs/NavDGPS.h>
 #include <ublox_msgs/NavDOP.h>
+#include <ublox_msgs/NavHPPOSECEF.h>
+#include <ublox_msgs/NavHPPOSLLH.h>
 #include <ublox_msgs/NavPOSECEF.h>
 #include <ublox_msgs/NavPOSLLH.h>
 #include <ublox_msgs/NavRELPOSNED.h>
+#include <ublox_msgs/NavRELPOSNED9.h>
 #include <ublox_msgs/NavSBAS.h>
 #include <ublox_msgs/NavSOL.h>
 #include <ublox_msgs/NavPVT.h>
@@ -96,6 +99,7 @@
 #include <ublox_msgs/AidEPH.h>
 #include <ublox_msgs/AidHUI.h>
 
+#include <ublox_msgs/EsfALG.h>
 #include <ublox_msgs/EsfINS.h>
 #include <ublox_msgs/EsfMEAS.h>
 #include <ublox_msgs/EsfRAW.h>
@@ -155,9 +159,12 @@ namespace Message {
     static const uint8_t CLOCK = NavCLOCK::MESSAGE_ID;
     static const uint8_t DGPS = NavDGPS::MESSAGE_ID;
     static const uint8_t DOP = NavDOP::MESSAGE_ID;
+    static const uint8_t HPPOSECEF = NavHPPOSECEF::MESSAGE_ID;
+    static const uint8_t HPPOSLLH = NavHPPOSLLH::MESSAGE_ID;
     static const uint8_t POSECEF = NavPOSECEF::MESSAGE_ID;
     static const uint8_t POSLLH = NavPOSLLH::MESSAGE_ID;
     static const uint8_t RELPOSNED = NavRELPOSNED::MESSAGE_ID;
+    static const uint8_t RELPOSNED9 = NavRELPOSNED9::MESSAGE_ID;
     static const uint8_t SBAS = NavSBAS::MESSAGE_ID;
     static const uint8_t SOL = NavSOL::MESSAGE_ID;
     static const uint8_t PVT = NavPVT::MESSAGE_ID;
@@ -233,6 +240,7 @@ namespace Message {
   }
 
   namespace ESF {
+    static const uint8_t ALG = EsfALG::MESSAGE_ID;
     static const uint8_t INS = EsfINS::MESSAGE_ID;
     static const uint8_t MEAS = EsfMEAS::MESSAGE_ID;
     static const uint8_t RAW = EsfRAW::MESSAGE_ID;

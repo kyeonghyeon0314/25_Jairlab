@@ -33,7 +33,6 @@
 // STL
 #include <vector>
 #include <set>
-#include <fstream>
 // Boost
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -42,6 +41,7 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <ros/serialization.h>
+#include <tf/transform_datatypes.h>
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <diagnostic_updater/publisher.h>
 // ROS messages
@@ -50,12 +50,15 @@
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/TimeReference.h>
 #include <sensor_msgs/Imu.h>
-#include <std_msgs/String.h>
+#include <nmea_msgs/Sentence.h>
 // Other U-Blox package includes
 #include <ublox_msgs/ublox_msgs.h>
 // Ublox GPS includes
 #include <ublox_gps/gps.h>
 #include <ublox_gps/utils.h>
+#include <ublox_gps/raw_data_pa.h>
+
+#include <rtcm_msgs/Message.h>
 
 // This file declares the ComponentInterface which acts as a high level
 // interface for u-blox firmware, product categories, etc. It contains methods
@@ -122,14 +125,6 @@ uint16_t nav_rate;
 std::vector<uint8_t> rtcm_ids;
 //! Rates of RTCM out messages. Size must be the same as rtcm_ids
 std::vector<uint8_t> rtcm_rates;
-//! Directoy name for storing raw data
-std::string raw_data_stream_dir_;
-//! Filename for storing raw data
-std::string raw_data_stream_filename_;
-//!< Handle for file access
-std::ofstream raw_data_stream_file_;
-//! Flag for publishing raw data 
-bool raw_data_stream_flag_;
 //! Flag for enabling configuration on startup
 bool config_on_startup_flag_;
 
@@ -137,6 +132,9 @@ bool config_on_startup_flag_;
 //! Topic diagnostics for u-blox messages
 struct UbloxTopicDiagnostic {
   UbloxTopicDiagnostic() {}
+
+  // Must not copy this struct (would confuse FrequencyStatusParam pointers)
+  UbloxTopicDiagnostic(const UbloxTopicDiagnostic&) = delete;
 
   /**
    * @brief Add a topic diagnostic to the diagnostic updater for
@@ -190,6 +188,9 @@ struct UbloxTopicDiagnostic {
 struct FixDiagnostic {
   FixDiagnostic() {}
 
+  // Must not copy this struct (would confuse FrequencyStatusParam pointers)
+  FixDiagnostic(const FixDiagnostic&) = delete;
+
   /**
    * @brief Add a topic diagnostic to the diagnostic updater for fix topics.
    *
@@ -223,7 +224,7 @@ struct FixDiagnostic {
 };
 
 //! fix frequency diagnostic updater
-FixDiagnostic freq_diag;
+boost::shared_ptr<FixDiagnostic> freq_diag;
 
 /**
  * @brief Determine dynamic model from human-readable string.
@@ -427,6 +428,16 @@ void publish(const MessageT& m, const std::string& topic) {
   publisher.publish(m);
 }
 
+void publish_nmea(const std::string& sentence, const std::string& topic) {
+  static ros::Publisher publisher = nh->advertise<nmea_msgs::Sentence>(topic,
+                                                            kROSQueueSize);
+  nmea_msgs::Sentence m;
+  m.header.stamp = ros::Time::now();
+  m.header.frame_id = frame_id;
+  m.sentence = sentence;
+  publisher.publish(m);
+}
+
 /**
  * @param gnss The string representing the GNSS. Refer MonVER message protocol.
  * i.e. GPS, GLO, GAL, BDS, QZSS, SBAS, IMES
@@ -489,9 +500,9 @@ typedef boost::shared_ptr<ComponentInterface> ComponentPtr;
  */
 class UbloxNode : public virtual ComponentInterface {
  public:
-  //! How long to wait during I/O reset [s]
-  constexpr static int kResetWait = 10;
-  //! how often (in seconds) to call poll messages
+  //! How often (in seconds) to send keep-alive message
+  constexpr static double kKeepAlivePeriod = 10.0;
+  //! How often (in seconds) to call poll messages
   constexpr static double kPollDuration = 1.0;
   // Constants used for diagnostic frequency updater
   //! [s] 5Hz diagnostic period
@@ -582,6 +593,12 @@ class UbloxNode : public virtual ComponentInterface {
                            std::string ref_rov = "");
 
   /**
+   * @brief Poll version message from the U-Blox device to keep socket active.
+   * @param event a timer indicating how often to poll
+   */
+  void keepAlive(const ros::TimerEvent& event);
+
+  /**
    * @brief Poll messages from the U-Blox device.
    * @param event a timer indicating how often to poll the messages
    */
@@ -591,13 +608,6 @@ class UbloxNode : public virtual ComponentInterface {
    * @brief Configure INF messages, call after subscribe.
    */
   void configureInf();
-
-  /**
-   * @brief Callback function which handles raw data.
-   * @param data the buffer of u-blox messages to process
-   * @param size the size of the buffer
-   */
-  void rawDataCallback(const unsigned char* data, const std::size_t size);
 
   //! The u-blox node components
   /*!
@@ -656,6 +666,9 @@ class UbloxNode : public virtual ComponentInterface {
   ublox_msgs::CfgCFG save_;
   //! rate for TIM-TM2
   uint8_t tim_rate_;
+
+  //! raw data stream logging
+  RawDataStreamPa rawDataStreamPa_;
 };
 
 /**
@@ -863,7 +876,7 @@ class UbloxFirmware7Plus : public UbloxFirmware {
     // Update diagnostics
     //
     last_nav_pvt_ = m;
-    freq_diag.diagnostic->tick(fix.header.stamp);
+    freq_diag->diagnostic->tick(fix.header.stamp);
     updater->update();
   }
 
@@ -893,6 +906,17 @@ class UbloxFirmware7Plus : public UbloxFirmware {
       stat.level = diagnostic_msgs::DiagnosticStatus::OK;
       stat.message = "Time only fix";
     }
+    
+    // Check whether differential GNSS available
+    if (last_nav_pvt_.flags & ublox_msgs::NavPVT::FLAGS_DIFF_SOLN) {
+      stat.message += ", DGNSS";
+    } 
+    // If DGNSS, then update the differential solution status
+    if (last_nav_pvt_.flags & ublox_msgs::NavPVT::CARRIER_PHASE_FLOAT) {
+      stat.message += ", FLOAT FIX";
+    } else if (last_nav_pvt_.flags & ublox_msgs::NavPVT::CARRIER_PHASE_FIXED) {
+      stat.message += ", RTK FIX";
+    }
 
     // If fix not ok (w/in DOP & Accuracy Masks), raise the diagnostic level
     if (!(last_nav_pvt_.flags & ublox_msgs::NavPVT::FLAGS_GNSS_FIX_OK)) {
@@ -907,8 +931,14 @@ class UbloxFirmware7Plus : public UbloxFirmware {
 
     // append last fix position
     stat.add("iTOW [ms]", last_nav_pvt_.iTOW);
-    stat.add("Latitude [deg]", last_nav_pvt_.lat * 1e-7);
-    stat.add("Longitude [deg]", last_nav_pvt_.lon * 1e-7);
+    std::ostringstream gnss_coor;
+    gnss_coor << std::fixed << std::setprecision(7);
+    gnss_coor << (last_nav_pvt_.lat * 1e-7);
+    stat.add("Latitude [deg]", gnss_coor.str());
+    gnss_coor.str("");
+    gnss_coor.clear();
+    gnss_coor << (last_nav_pvt_.lon * 1e-7);
+    stat.add("Longitude [deg]", gnss_coor.str());
     stat.add("Altitude [m]", last_nav_pvt_.height * 1e-3);
     stat.add("Height above MSL [m]", last_nav_pvt_.hMSL * 1e-3);
     stat.add("Horizontal Accuracy [m]", last_nav_pvt_.hAcc * 1e-3);
@@ -1016,6 +1046,14 @@ class UbloxFirmware8 : public UbloxFirmware7Plus<ublox_msgs::NavPVT> {
 };
 
 /**
+ *  @brief Implements functions for firmware version 9.
+ *  For now it simply re-uses the firmware version 8 class
+ *  but allows for future expansion of functionality
+ */
+class UbloxFirmware9 : public UbloxFirmware8 {
+};
+
+/**
  * @brief Implements functions for Raw Data products.
  */
 class RawDataProduct: public virtual ComponentInterface {
@@ -1048,7 +1086,7 @@ class RawDataProduct: public virtual ComponentInterface {
 
  private:
   //! Topic diagnostic updaters
-  std::vector<UbloxTopicDiagnostic> freq_diagnostics_;
+  std::vector<boost::shared_ptr<UbloxTopicDiagnostic> > freq_diagnostics_;
 };
 
 /**
@@ -1057,6 +1095,8 @@ class RawDataProduct: public virtual ComponentInterface {
  */
 class AdrUdrProduct: public virtual ComponentInterface {
  public:
+  AdrUdrProduct(float protocol_version);
+  
   /**
    * @brief Get the ADR/UDR parameters.
    *
@@ -1090,7 +1130,8 @@ class AdrUdrProduct: public virtual ComponentInterface {
 
  protected:
   //! Whether or not to enable dead reckoning
-  bool use_adr_;
+  bool use_adr_;  
+  float protocol_version_;
 
    
   sensor_msgs::Imu imu_;
@@ -1308,6 +1349,33 @@ class HpgRovProduct: public virtual ComponentInterface {
 
   //! The RTCM topic frequency diagnostic updater
   UbloxTopicDiagnostic freq_rtcm_;
+};
+
+class HpPosRecProduct: public virtual HpgRefProduct {
+ public:
+  /**
+   * @brief Subscribe to Rover messages, such as NavRELPOSNED.
+   */
+  void subscribe();
+
+ protected:
+
+  /**
+   * @brief Publish a sensor_msgs/NavSatFix message upon receiving a HPPOSLLH UBX message
+   */
+  void callbackNavHpPosLlh(const ublox_msgs::NavHPPOSLLH& m);
+
+  /**
+   * @brief Set the last received message and call rover diagnostic updater
+   *
+   * @details Publish received NavRELPOSNED messages if enabled
+   */
+  void callbackNavRelPosNed(const ublox_msgs::NavRELPOSNED9 &m);
+
+  sensor_msgs::Imu imu_;
+
+  //! Last relative position (used for diagnostic updater)
+  ublox_msgs::NavRELPOSNED9 last_rel_pos_;
 };
 
 /**

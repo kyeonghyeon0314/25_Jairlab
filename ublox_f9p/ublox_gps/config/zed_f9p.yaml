@@ -1,0 +1,44 @@
+# Configuration Settings for ZED-F9P device
+# Please change these settings according as necessary
+device: /dev/ttyACM0
+frame_id: gps
+uart1:
+  baudrate: 460800
+config_on_startup: true
+rate: 20                      # in Hz 
+nav_rate: 1                 # [# of measurement cycles] for 20Hz
+dgnss_mode: 3                # Fixed mode
+dynamic_model: automotive    # automotive mode
+use_adr: false               # Whether to enable dead reckoning (F9P doesn't support ADR)
+
+# GNSS configuration
+gnss:
+  glonass: true
+  beidou: true
+  galileo: true
+  qzss: true
+  sbas: true
+
+# TMODE3 configuration for ZED-F9P
+tmode3: 0                    # 0: Disabled, 1: Survey-In, 2: Fixed Mode
+# sv_in:
+#   min_dur: 300               # Survey-in minimum duration (seconds)
+#   acc_lim: 2.0               # Survey-in accuracy limit (meters)
+
+inf:
+  all: false                 # Whether to display all INF messages in console
+
+# Enable necessary u-blox message publishers
+publish:
+  all: false
+  nav:
+    status: true
+    pvt: true
+    posecef: false
+    hpposllh: true
+    relposned: true
+    svin: true
+  mon:
+    hw: true
+  rxm:
+    rtcm: true
