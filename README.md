@@ -33,7 +33,13 @@ sudo apt-get install ros-noetic-nmea-msgs
 
 roslaunch husky_dwa_navigation integrated_navigation.launch            # 프레임 설정 , waypoints, global_path, gps+Odom
 roslaunch husky_dwa_navigation husky_control_nav_localization.launch   # faster-lio, DWA, 로봇 스폰 등등
-python3 move_front.py                                                  # 직선주행으로 초기 Heading 맞추기 
+
+# 실제 상황: 직선주행으로 초기 Heading 맞추기 
+python3 move_front.py
+
+# bag 파일: 타임스탬프 맞추기
+rosrun husky_dwa_navigation sync2.py
+rosbag play <*.bag> /ouster/points:=/new_points /ouster/imu:=/new_imu
 ```
 
 ## 🔧 핵심 구성요소

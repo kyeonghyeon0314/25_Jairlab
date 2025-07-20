@@ -1,23 +1,28 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- 통합 네비게이션 시스템 런치 파일 -->
-  <!-- GPS 서버, 경로 시각화, 웨이포인트 생성기를 통합 실행 -->
-  
-  <!-- GPS 서버 실행 -->
-  <node pkg="husky_dwa_navigation" type="gps_server.py" name="gps_server" output="screen">
+  <!-- 5개 노드 통합 자율주행 네비게이션 시스템 -->
+  <!-- make_frame, initialize_pose, path_visualizer, gps_server, waypoints_generator -->
+
+  <!-- 시뮬레이션 시간 설정 -->
+  <param name="use_sim_time" value="false" />
+
+  <!-- 1. UTM Local 좌표계 설정 및 GPS-FasterLIO 동기화 -->
+  <node pkg="husky_dwa_navigation" type="make_frame.py" name="make_frame_node" output="screen"/>
+
+  <!-- 2. FasterLIO-GPS 융합 위치 추정 및 Heading 보정 -->
+  <node pkg="husky_dwa_navigation" type="initialize_pose.py" name="initialize_pose_node" output="screen"/>
+
+  <!-- 3. 경로 및 웨이포인트 시각화 전용 -->
+  <node pkg="husky_dwa_navigation" type="path_visualizer.py" name="path_visualizer_node" output="screen"/>
+
+  <!-- 4. 웹 인터페이스 및 GPS 서버 -->
+  <node pkg="husky_dwa_navigation" type="gps_server.py" name="gps_server_node" output="screen">
     <param name="port" value="8000" />
     <param name="websocket_port" value="8765" />
     <param name="waypoints_websocket_port" value="8766" />
   </node>
-  
-  <!-- 경로 시각화 및 UTM 좌표계 관리 -->
-  <node pkg="husky_dwa_navigation" type="path_visualizer.py" name="path_visualizer" output="screen">
-    <param name="use_sim_time" value="false" />
-  </node>
-  
-  <!-- 웨이포인트 생성기 및 네비게이션 시스템 -->
-  <node pkg="husky_dwa_navigation" type="waypoints_generator.py" name="waypoints_generator" output="screen">
-    <param name="use_sim_time" value="false" />
-  </node>
-  
+
+  <!-- 5. 웨이포인트 자율주행 네비게이션 -->
+  <node pkg="husky_dwa_navigation" type="waypoints_generator.py" name="waypoint_navigator_node" output="screen"/>
+
 </launch>
