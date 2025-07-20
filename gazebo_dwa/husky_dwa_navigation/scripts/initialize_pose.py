@@ -64,7 +64,7 @@ class PoseInitializer:
         rospy.Timer(rospy.Duration(0.1), self.publish_current_pose)
         rospy.Timer(rospy.Duration(0.1), self.broadcast_dynamic_tf)
         rospy.Timer(rospy.Duration(0.5), self.publish_uncertainty)
-        rospy.Timer(rospy.Duration(2.0), self.check_gradual_heading_correction)
+        # rospy.Timer(rospy.Duration(2.0), self.check_gradual_heading_correction)
 
         rospy.loginfo("🚀 PoseInitializer 시작 - FasterLIO-GPS 융합 위치 추정")
 
