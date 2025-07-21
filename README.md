@@ -37,7 +37,7 @@ roslaunch husky_dwa_navigation husky_control_nav_localization.launch   # faster-
 # 실제 상황: 직선주행으로 초기 Heading 맞추기 
 python3 move_front.py
 
-# bag 파일: 타임스탬프 맞추기
+# bag 파일: 타임스탬프 맞추기 gps는 센서 
 rosrun husky_dwa_navigation sync2.py
 rosbag play <*.bag> /ouster/points:=/new_points /ouster/imu:=/new_imu
 ```

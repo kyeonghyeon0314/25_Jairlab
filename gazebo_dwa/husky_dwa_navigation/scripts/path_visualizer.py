@@ -14,36 +14,40 @@ class PathVisualizer:
     경로 및 웨이포인트 시각화 전용 모듈
     - Corrected Path (빨간색): /fused_odom에서 보정된 로봇 궤적
     - GPS Path (파란색): /ublox/fix에서 UTM Local로 변환된 GPS 궤적  
-    - FasterLIO Path (회색): /Odometry에서 원본 FasterLIO 궤적
     - Waypoints: 웹에서 받은 웨이포인트 시각화
     """
+    # 색상 상수 정의
+    COLORS = {
+        'red': (1.0, 0.0, 0.0),
+        'green': (0.0, 1.0, 0.0),
+        'blue': (0.0, 0.0, 1.0),
+        'yellow': (1.0, 1.0, 0.0),
+        'orange': (1.0, 0.5, 0.0),
+        'gray': (0.5, 0.5, 0.5),
+        'white': (1.0, 1.0, 1.0)
+    }
+    
     def __init__(self):
         rospy.init_node('path_visualizer_node', anonymous=True)
 
         # 궤적 데이터
         self.gps_path = []
         self.corrected_path = []
-        self.fasterlio_path = []
         self.latest_waypoints = None
 
-        # UTM 원점 정보
+        # UTM 원점 정보 (initialize_pose.py에서 수신)
         self.utm_origin_absolute = None
         self.origin_synced = False
-        
-        # FasterLIO 원점 (원본 코드처럼 상대좌표 계산용)
-        self.fasterlio_origin = None
 
         # Publishers - 각 경로별 시각화
         self.gps_path_pub = rospy.Publisher("/gps_path", Marker, queue_size=1)
         self.corrected_path_pub = rospy.Publisher("/corrected_path", Marker, queue_size=1)
-        self.fasterlio_path_pub = rospy.Publisher("/fasterlio_path", Marker, queue_size=1)
         self.waypoints_pub = rospy.Publisher("/global_waypoints", MarkerArray, queue_size=10)
 
         # Subscribers
         rospy.Subscriber("/utm_origin_info", String, self.utm_origin_callback)
         rospy.Subscriber("/fused_odom", Odometry, self.corrected_callback)
         rospy.Subscriber("/ublox/fix", NavSatFix, self.gps_callback)
-        rospy.Subscriber("/Odometry", Odometry, self.fasterlio_callback)
         rospy.Subscriber("/waypoints", String, self.waypoints_callback)
         
         # 카카오 네비게이션 웨이포인트 시각화도 구독 (중복 제거용)
@@ -80,33 +84,6 @@ class PathVisualizer:
             if len(self.corrected_path) > 1000:
                 self.corrected_path = self.corrected_path[-800:]
 
-    def fasterlio_callback(self, msg):
-        """원본 FasterLIO 경로 (회색) - 원점 기준 상대좌표로 변환"""
-        # 첫 번째 FasterLIO 데이터면 원점으로 설정
-        if self.fasterlio_origin is None:
-            self.fasterlio_origin = {
-                "x": msg.pose.pose.position.x,
-                "y": msg.pose.pose.position.y,
-                "z": msg.pose.pose.position.z
-            }
-            rospy.loginfo(f"📊 FasterLIO 시각화 원점 설정: ({self.fasterlio_origin['x']:.2f}, {self.fasterlio_origin['y']:.2f})")
-        
-        # 원점 기준 상대좌표 계산
-        rel_x = msg.pose.pose.position.x - self.fasterlio_origin["x"]
-        rel_y = msg.pose.pose.position.y - self.fasterlio_origin["y"]
-        rel_z = msg.pose.pose.position.z - self.fasterlio_origin["z"]
-        
-        point = Point()
-        point.x = rel_x
-        point.y = rel_y
-        point.z = rel_z
-        
-        # 거리 기반 필터링
-        if not self.fasterlio_path or self.distance_check(point, self.fasterlio_path[-1], 0.5):
-            self.fasterlio_path.append(point)
-            
-            if len(self.fasterlio_path) > 1000:
-                self.fasterlio_path = self.fasterlio_path[-800:]
 
     def gps_callback(self, msg):
         """GPS 경로 (파란색) - UTM Local로 변환"""
@@ -147,7 +124,7 @@ class PathVisualizer:
                 return  # 카카오 데이터는 별도 콜백에서 처리
             
             self.latest_waypoints = data
-            rospy.loginfo("📍 일반 웨이포인트 수신됨")
+            rospy.logdebug("📍 일반 웨이포인트 수신됨")
             
         except json.JSONDecodeError as e:
             rospy.logwarn(f"⚠️ 웨이포인트 JSON 파싱 실패: {e}")
@@ -158,16 +135,15 @@ class PathVisualizer:
             data = json.loads(msg.data)
             if data.get("coordinate_type") == "kakao_navigation_route":
                 self.latest_waypoints = data
-                rospy.loginfo("🗺️ 카카오 네비게이션 웨이포인트 우선 적용")
+                rospy.loginfo_throttle(5, "🗺️ 카카오 네비게이션 웨이포인트 업데이트됨")
                 
         except json.JSONDecodeError as e:
             rospy.logwarn(f"⚠️ 카카오 웨이포인트 파싱 실패: {e}")
 
-    def publish_all_visualizations(self, event):
+    def publish_all_visualizations(self, _):
         """모든 시각화 정기적 발행"""
         self.publish_gps_path()
         self.publish_corrected_path()
-        self.publish_fasterlio_path()
         self.publish_waypoints()
 
     def publish_gps_path(self):
@@ -192,16 +168,6 @@ class PathVisualizer:
         )
         self.corrected_path_pub.publish(marker)
 
-    def publish_fasterlio_path(self):
-        """FasterLIO 원본 경로 시각화 (회색) - 원점 기준 상대좌표"""
-        if len(self.fasterlio_path) < 2:
-            return
-        
-        marker = self.create_path_marker(
-            self.fasterlio_path, "fasterlio_path", "utm_local",  # utm_local 프레임 사용
-            (0.5, 0.5, 0.5), 2.0  # 회색, 얇게
-        )
-        self.fasterlio_path_pub.publish(marker)
 
     def publish_waypoints(self):
         """웨이포인트 시각화"""
@@ -251,10 +217,8 @@ class PathVisualizer:
             line_marker.scale.x = 1.5
             
             # 카카오 네비게이션은 주황색, 일반은 노란색
-            if is_kakao_navigation:
-                line_marker.color.r, line_marker.color.g, line_marker.color.b = 1.0, 0.5, 0.0  # 주황색
-            else:
-                line_marker.color.r, line_marker.color.g, line_marker.color.b = 1.0, 1.0, 0.0  # 노란색
+            color = self.COLORS['orange'] if is_kakao_navigation else self.COLORS['yellow']
+            line_marker.color.r, line_marker.color.g, line_marker.color.b = color
             
             line_marker.color.a = 1.0
             line_marker.pose.orientation.w = 1.0
@@ -281,27 +245,27 @@ class PathVisualizer:
             
             # 상태에 따른 색상 결정
             if is_kakao_navigation:
-                # 카카오 네비게이션 상태별 색상
                 if wp_data.get("completed", False):
-                    cube.color.r, cube.color.g, cube.color.b = 0.5, 0.5, 0.5  # 완료: 회색
+                    color = self.COLORS['gray']
                 elif wp_data.get("is_current", False):
-                    cube.color.r, cube.color.g, cube.color.b = 0.0, 1.0, 0.0  # 현재: 녹색
+                    color = self.COLORS['green']
                 elif wp_data.get("is_destination", False):
-                    cube.color.r, cube.color.g, cube.color.b = 1.0, 0.0, 0.0  # 목적지: 빨간색
+                    color = self.COLORS['red']
                 else:
-                    cube.color.r, cube.color.g, cube.color.b = 1.0, 0.5, 0.0  # 대기: 주황색
+                    color = self.COLORS['orange']
             else:
-                # 일반 웨이포인트 색상
                 if original_index < current_wp_index:
-                    cube.color.r, cube.color.g, cube.color.b = 0.5, 0.5, 0.5  # 완료: 회색
+                    color = self.COLORS['gray']
                 elif original_index == current_wp_index:
-                    cube.color.r, cube.color.g, cube.color.b = 0.0, 1.0, 0.0  # 현재: 녹색
+                    color = self.COLORS['green']
                 elif original_index == 0:
-                    cube.color.r, cube.color.g, cube.color.b = 0.0, 1.0, 0.0  # 시작: 녹색
+                    color = self.COLORS['green']
                 elif original_index == len(waypoints) - 1:
-                    cube.color.r, cube.color.g, cube.color.b = 1.0, 0.0, 0.0  # 끝: 빨간색
+                    color = self.COLORS['red']
                 else:
-                    cube.color.r, cube.color.g, cube.color.b = 1.0, 1.0, 0.0  # 중간: 노란색
+                    color = self.COLORS['yellow']
+            
+            cube.color.r, cube.color.g, cube.color.b = color
             
             cube.color.a = 0.9
             marker_array.markers.append(cube)
@@ -319,7 +283,8 @@ class PathVisualizer:
             text.pose.position.z = 6.0
             text.pose.orientation.w = 1.0
             text.scale.z = 4.0
-            text.color.r, text.color.g, text.color.b, text.color.a = 1.0, 1.0, 1.0, 1.0
+            text.color.r, text.color.g, text.color.b = self.COLORS['white']
+            text.color.a = 1.0
             
             # 텍스트 내용
             if is_kakao_navigation:

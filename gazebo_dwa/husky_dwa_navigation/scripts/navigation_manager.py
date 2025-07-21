@@ -65,6 +65,9 @@ class NavigationManager:
         self.goal_sub = rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.goal_callback)
         self.current_goal_sub = rospy.Subscriber('/move_base/current_goal', PoseStamped, self.current_goal_callback)
         
+        # waypoints_generator에서 오는 순차 목표 구독
+        self.waypoint_goal_sub = rospy.Subscriber('/waypoint_goal', PoseStamped, self.waypoint_goal_callback)
+        
         # 중간 목표 지점 발행자
         self.intermediate_goal_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
         
@@ -134,14 +137,22 @@ class NavigationManager:
         """
         중간 목표를 주기적으로 업데이트하는 타이머 콜백
         """
-        # 원본 목표가 없거나 costmap을 아직 받지 못했다면 무시
-        if self.original_goal is None or not self.have_costmap:
+        # 디버깅: 상태 확인
+        if self.original_goal is None:
+            rospy.loginfo_throttle(10, "❌ 원본 목표가 없음 - 중간 목표 생성 불가")
+            return
+            
+        if not self.have_costmap:
+            rospy.loginfo_throttle(10, "❌ costmap을 받지 못함 - 중간 목표 생성 불가")
             return
             
         # 현재 로봇의 위치를 가져오기
         robot_pose = self.get_robot_pose()
         if robot_pose is None:
+            rospy.loginfo_throttle(10, "❌ 로봇 위치를 가져올 수 없음 - 중간 목표 생성 불가")
             return
+            
+        rospy.loginfo_throttle(10, f"✅ 중간 목표 생성 조건 충족 - 원본목표: ({self.original_goal.pose.position.x:.1f}, {self.original_goal.pose.position.y:.1f})")
             
         # 원본 목표 위치를 costmap 프레임으로 변환
         try:
@@ -445,6 +456,24 @@ class NavigationManager:
         
         rospy.loginfo("새 원본 목표 설정: (%.2f, %.2f)", 
                     goal_msg.pose.position.x, goal_msg.pose.position.y)
+        
+        # 중간 목표 업데이트 트리거
+        self.update_intermediate_goal()
+        self.current_shift_attempts = 0
+        self.shift_multiplier = 1.0
+    
+    def waypoint_goal_callback(self, goal_msg):
+        """
+        waypoints_generator에서 온 순차 목표 처리
+        """
+        rospy.loginfo("waypoints_generator로부터 새 목표 수신: (%.2f, %.2f)", 
+                     goal_msg.pose.position.x, goal_msg.pose.position.y)
+        
+        # 원본 목표 저장
+        self.original_goal = goal_msg
+        self.ORIGINAL_GOAL_Z = goal_msg.pose.position.z
+        self.intermediate_goal_active = False
+        self.consecutive_failures = 0
         
         # 중간 목표 업데이트 트리거
         self.update_intermediate_goal()

@@ -1,53 +1,20 @@
 <?xml version="1.0"?>
 <launch>
   
-  <param name="/use_sim_time" value="false" />
+  <param name="/use_sim_time" value="true" />
 
-  <arg name="port" default="$(optenv HUSKY_PORT /dev/ttyUSB0)" />
-
-  <!-- Husky harware driver -->
-  <!--
-  <node pkg="husky_base" type="husky_node" name="husky_node">
-      <rosparam subst_value="true">
-          port: $(arg port)
-
-          control_frequency: 10.0
-          diagnostic_frequency: 1.0
-
-          max_acceleration: 3.0
-          max_speed: 1.0
-          wheel_diameter: 0.3302
-          polling_timeout: 10.0
-      </rosparam>
-  </node>
-  -->
-
-  
   <!-- ===== 로봇 제어, 네비게이션, localization 및 모니터링 담당 ===== -->
   <!-- 환경 독립적: 시뮬레이션과 실제 환경에서 동일하게 사용 -->
-  
-  <!-- Husky 제어 시스템 (robot_state_publisher 포함) -->
-  <!-- <arg name="multimaster" default="$(optenv ROBOT_MULTIMASTER false)"/> -->
-  <!-- <arg name="simulation" default="$(optenv ROBOT_SIMULATION false)"/>
-  <arg name="robot_namespace" default="$(optenv ROBOT_NAMESPACE robot)"/> -->
-  <arg name="enable_ekf" default="false"/>  <!--EKF 비활성화-->
 
-  <arg name="config_extras"
-       default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
-
-  <!-- <include file="$(find multimaster_launch)/launch/multimaster_robot.launch" if="$(arg multimaster)">
-    <arg name="gazebo_interface" value="$(find husky_control)/config/gazebo_interface.yaml" />
-    <arg name="public_interface" value="$(find husky_control)/config/public_interface.yaml" />
-    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-    <arg name="simulation" value="$(arg simulation)"/>
-  </include> -->
+  <arg name="enable_ekf" default="false"/>
+  <arg name="config_extras" default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
 
   <!-- Load robot description -->
   <param name="robot_description" command="$(find xacro)/xacro '$(find husky_description)/urdf/husky.urdf.xacro'" />
 
   <!-- Load controller configuration -->
   <rosparam command="load" file="$(find husky_control)/config/control.yaml" />
-  <rosparam command="load" file="$(find husky_control)/config/teleop_logitech.yaml" />
+  <rosparam command="load" file="$(find husky_control)/config/teleop_ps4.yaml" />
 
   <!-- Spawn controllers -->
   <node name="base_controller_spawner" pkg="controller_manager" type="spawner"
@@ -89,7 +56,7 @@
     <param name="filter_limit_min" value="-0.85" />
     <param name="filter_limit_max" value="2" />
   </node>
-  
+
   <!-- PointCloud2를 LaserScan으로 변환 -->
   <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
     <remap from="cloud_in" to="/points_filtered"/>
@@ -108,16 +75,12 @@
     <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />
     <rosparam file="$(find husky_dwa_navigation)/config/local_costmap_params.yaml" command="load" />
     <rosparam file="$(find husky_dwa_navigation)/config/global_costmap_params.yaml" command="load" />
-    
-    <!-- 로봇 동역학 파라미터 -->
     <rosparam file="$(find husky_dwa_navigation)/config/robot_dynamics_params.yaml" command="load" />
-    
-    <!-- 경로 계획 파라미터 -->
     <rosparam file="$(find husky_dwa_navigation)/config/path_planning_params.yaml" command="load" />
   </node>
 
   <!-- ===== Navigation Manager ===== -->
-  <node pkg="husky_dwa_navigation" type="navigation_manager_node.py" name="navigation_manager" output="screen">
+  <node pkg="husky_dwa_navigation" type="navigation_manager.py" name="navigation_manager" output="screen">
     <param name="global_costmap_topic" value="/move_base/global_costmap/costmap" />
     <param name="robot_base_frame" value="base_link" />
     <param name="switch_service" value="/move_base/set_parameters" />
@@ -127,12 +90,8 @@
     <param name="border_tolerance" value="1.0" />
   </node>
 
-  <!-- ===== RViz 시각화 (로봇 제어 및 모니터링) ===== -->
-  <!-- 메인 RViz - 로봇 상태 모니터링 및 제어 -->
-  <!-- <node name="rviz" pkg="rviz" type="rviz" 
-        args="-d $(find husky_custom_gazebo)/rviz/husky_ouster_gps.rviz" 
-        output="screen" /> -->
+  <!-- ===== RViz 시각화 ===== -->
   <node name="rviz" pkg="rviz" type="rviz" 
         args="-d $(find faster_lio)/rviz_cfg/loam_livox.rviz" 
-        output="screen" />     
+        output="screen" />
 </launch>

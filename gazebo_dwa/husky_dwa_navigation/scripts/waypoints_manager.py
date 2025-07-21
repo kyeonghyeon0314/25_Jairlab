@@ -5,15 +5,12 @@ import rospy
 import json
 import utm
 import math
-import numpy as np
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from sensor_msgs.msg import NavSatFix
 from nav_msgs.msg import Odometry
 from actionlib_msgs.msg import GoalStatusArray, GoalStatus
-from move_base_msgs.msg import MoveBaseActionGoal
 from actionlib_msgs.msg import GoalID
-import numpy as np
 
 class KakaoNavigationSystem:
     """완전한 카카오 웨이포인트 자율주행 시스템
@@ -31,15 +28,13 @@ class KakaoNavigationSystem:
         self.utm_zone = None
         self.origin_synced = False
         
-        # 📍 카카오 웨이포인트 관리
-        self.kakao_waypoints_gps = []       # 카카오에서 받은 원본 GPS 웨이포인트
+        # 📍 웨이포인트 관리
         self.converted_waypoints_local = [] # UTM Local로 변환된 웨이포인트
         self.current_waypoint_index = 0     # 현재 목표 웨이포인트 인덱스
         self.is_navigating = False          # 네비게이션 상태
         self.navigation_started = False     # 네비게이션 시작 여부
         
         # 🎯 목적지 관리
-        self.destination_gps = None         # 최종 목적지 GPS 좌표
         self.destination_local = None       # 최종 목적지 UTM Local 좌표
         
         # 🔄 상태 관리
@@ -61,10 +56,9 @@ class KakaoNavigationSystem:
         self.total_waypoints = 0
         self.completed_waypoints = 0
         self.failed_waypoints = 0
-        self.total_distance_traveled = 0.0
         
-        # Publishers
-        self.goal_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
+        # Publishers - navigation_manager 전용 토픽 사용
+        self.goal_pub = rospy.Publisher('/waypoint_goal', PoseStamped, queue_size=1)
         self.goal_cancel_pub = rospy.Publisher('/move_base/cancel', GoalID, queue_size=1)  # Goal 취소용
         self.visualization_pub = rospy.Publisher('/kakao_waypoints_viz', String, queue_size=1)  # 시각화 전용
         self.status_pub = rospy.Publisher('/kakao_navigation/status', String, queue_size=1)
@@ -163,11 +157,33 @@ class KakaoNavigationSystem:
                 waypoints_data = data["waypoints"]
                 rospy.loginfo(f"📍 총 {len(waypoints_data)}개 웨이포인트")
                 
-                # 🚨 GPS 좌표 검증 강화
+                # 🚨 GPS 좌표 검증 강화 (nested GPS 좌표 지원)
                 valid_gps_count = 0
                 for wp in waypoints_data:
-                    if isinstance(wp, dict) and "lat" in wp and "lon" in wp:
-                        valid_gps_count += 1
+                    if isinstance(wp, dict):
+                        # 최상위 레벨에서 lat, lon 확인
+                        if "lat" in wp and "lon" in wp:
+                            lat, lon = wp["lat"], wp["lon"]
+                            if (isinstance(lat, (int, float)) and isinstance(lon, (int, float)) and
+                                abs(lat) > 0.001 and abs(lon) > 0.001 and
+                                -90 <= lat <= 90 and -180 <= lon <= 180):
+                                valid_gps_count += 1
+                        # original_gps 안에 nested된 GPS 좌표 확인
+                        elif "original_gps" in wp and isinstance(wp["original_gps"], dict):
+                            gps_data = wp["original_gps"]
+                            if "lat" in gps_data and "lon" in gps_data:
+                                lat, lon = gps_data["lat"], gps_data["lon"]
+                                if (isinstance(lat, (int, float)) and isinstance(lon, (int, float)) and
+                                    abs(lat) > 0.001 and abs(lon) > 0.001 and
+                                    -90 <= lat <= 90 and -180 <= lon <= 180):
+                                    valid_gps_count += 1
+                            
+                rospy.loginfo(f"🔍 GPS 좌표 검증: {valid_gps_count}개 유효한 GPS 웨이포인트 발견 (총 {len(waypoints_data)}개 중)")
+                
+                # 디버깅: 첫 번째 웨이포인트 구조 출력
+                if len(waypoints_data) > 0:
+                    first_wp = waypoints_data[0]
+                    rospy.loginfo(f"🔍 첫 번째 웨이포인트 구조: {first_wp}")
                 
                 if valid_gps_count == 0:
                     rospy.logwarn("⚠️ GPS 좌표가 포함된 웨이포인트가 없음 - Path Visualizer 데이터로 판단")
@@ -183,8 +199,18 @@ class KakaoNavigationSystem:
                 self.converted_waypoints_local = []
                 
                 for i, wp in enumerate(waypoints_data):
-                    if "lat" in wp and "lon" in wp:
-                        # GPS → UTM Local 변환
+                    # 이미 변환된 UTM Local 좌표가 있는지 확인
+                    if "x" in wp and "y" in wp and "original_gps" in wp:
+                        # 이미 변환된 데이터 사용
+                        local_waypoint = {
+                            "x": wp["x"],
+                            "y": wp["y"], 
+                            "index": i,
+                            "original_gps": wp["original_gps"]
+                        }
+                        self.converted_waypoints_local.append(local_waypoint)
+                    elif "lat" in wp and "lon" in wp:
+                        # 원시 GPS 좌표인 경우 변환
                         local_x, local_y = self.gps_to_utm_local(wp["lat"], wp["lon"])
                         
                         local_waypoint = {
@@ -193,7 +219,6 @@ class KakaoNavigationSystem:
                             "index": i,
                             "original_gps": {"lat": wp["lat"], "lon": wp["lon"]}
                         }
-                        
                         self.converted_waypoints_local.append(local_waypoint)
                         
                         # 로깅 (처음 3개와 마지막 3개만)
@@ -210,7 +235,18 @@ class KakaoNavigationSystem:
                 # 목적지 정보 추출 및 변환
                 if "destination" in data and data["destination"]:
                     dest = data["destination"]
-                    if "lat" in dest and "lon" in dest:
+                    # 이미 변환된 목적지 데이터 확인
+                    if "x" in dest and "y" in dest and "original_gps" in dest:
+                        # 이미 변환된 데이터 사용
+                        self.destination_local = {
+                            "x": dest["x"],
+                            "y": dest["y"], 
+                            "original_gps": dest["original_gps"]
+                        }
+                        orig_gps = dest["original_gps"]
+                        rospy.loginfo(f"   🎯 목적지: GPS({orig_gps['lat']:.6f}, {orig_gps['lon']:.6f}) → Local({dest['x']:.1f}, {dest['y']:.1f})")
+                    elif "lat" in dest and "lon" in dest:
+                        # 원시 GPS 좌표인 경우 변환
                         dest_x, dest_y = self.gps_to_utm_local(dest["lat"], dest["lon"])
                         self.destination_local = {
                             "x": dest_x, 
@@ -269,63 +305,6 @@ class KakaoNavigationSystem:
         
         return local_x, local_y
             
-    def process_kakao_waypoints(self):
-        """카카오 GPS 웨이포인트를 UTM Local 상대좌표로 변환 및 네비게이션 시작"""
-        if not self.utm_origin_absolute or not self.kakao_waypoints_gps:
-            rospy.logwarn("❌ 웨이포인트 처리 조건 미충족")
-            return
-            
-        self.converted_waypoints_local = []
-        
-        rospy.loginfo("🔄 카카오 웨이포인트 → UTM Local 변환:")
-        
-        for i, wp in enumerate(self.kakao_waypoints_gps):
-            if "lat" not in wp or "lon" not in wp:
-                rospy.logwarn(f"⚠️ WP{i+1}: GPS 좌표 누락")
-                continue
-                
-            lat, lon = wp["lat"], wp["lon"]
-            
-            # GPS를 UTM Local로 변환
-            local_x, local_y = self.gps_to_utm_local(lat, lon)
-            
-            local_waypoint = {
-                "x": local_x,
-                "y": local_y,
-                "original_gps": {"lat": lat, "lon": lon},
-                "index": i
-            }
-            
-            self.converted_waypoints_local.append(local_waypoint)
-            
-            # 로깅 (처음 3개와 마지막 3개만)
-            if i < 3 or i >= len(self.kakao_waypoints_gps) - 3:
-                rospy.loginfo(f"   WP{i+1}: GPS({lat:.6f}, {lon:.6f}) → Local({local_x:.1f}, {local_y:.1f})")
-        
-        # 목적지 변환
-        if self.destination_gps:
-            dest_x, dest_y = self.gps_to_utm_local(
-                self.destination_gps["lat"], self.destination_gps["lon"]
-            )
-            self.destination_local = {
-                "x": dest_x,
-                "y": dest_y,
-                "original_gps": self.destination_gps
-            }
-            rospy.loginfo(f"   🎯 목적지: GPS({self.destination_gps['lat']:.6f}, {self.destination_gps['lon']:.6f}) → Local({dest_x:.1f}, {dest_y:.1f})")
-        
-        rospy.loginfo(f"✅ {len(self.converted_waypoints_local)}개 웨이포인트 UTM Local 변환 완료!")
-        
-        # 웨이포인트 시각화 발행
-        self.publish_waypoints_visualization()
-        
-        # 네비게이션 시작
-        if self.current_pose_local:
-            rospy.loginfo("🚀 카카오 웨이포인트 자율주행 시작!")
-            self.start_navigation()
-        else:
-            rospy.loginfo("⏳ 현재 위치 정보 대기 중...")
-            
     def publish_waypoints_visualization(self):
         """변환된 UTM Local 웨이포인트 시각화 발행"""
         if not self.converted_waypoints_local:
@@ -377,25 +356,27 @@ class KakaoNavigationSystem:
         rospy.loginfo("🔄 네비게이션 상태 초기화 중...")
         self.is_navigating = True
         self.navigation_started = True
-        self.current_waypoint_index = 0
+        self.current_waypoint_index = 1  # 첫 번째 웨이포인트 건너뛰고 두 번째부터 시작
         self.current_goal_sent = False
-        self.completed_waypoints = 0
+        self.completed_waypoints = 1     # 첫 번째 웨이포인트는 완료로 처리
         self.failed_waypoints = 0
         self.goal_start_time = None
         self.last_success_time = rospy.Time(0)
         
         rospy.loginfo(f"✅ 상태 초기화 완료: WP인덱스={self.current_waypoint_index}, 완료={self.completed_waypoints}, 실패={self.failed_waypoints}")
         
-        rospy.loginfo("🚀 카카오 자율주행 시작!")
+        rospy.loginfo("🚀 순차적 웨이포인트 자율주행 시작!")
         rospy.loginfo(f"   현재 위치: UTM Local ({self.current_pose_local['x']:.2f}, {self.current_pose_local['y']:.2f})")
-        rospy.loginfo(f"   총 웨이포인트: {len(self.converted_waypoints_local)}개")
+        rospy.loginfo(f"   총 웨이포인트: {len(self.converted_waypoints_local)}개 (첫 번째 건너뛰고 {len(self.converted_waypoints_local)-1}개 처리)")
         rospy.loginfo(f"   좌표계: UTM Local")
+        rospy.loginfo(f"   🎯 두 번째 웨이포인트부터 navigation_manager로 순차 전송")
+        rospy.loginfo(f"   🔧 navigation_manager가 장애물 회피 및 최적화 담당")
         
         # 첫 번째 웨이포인트로 이동 시작
         self.send_current_waypoint()
         
     def send_current_waypoint(self):
-        """현재 웨이포인트를 move_base goal로 전송"""
+        """현재 웨이포인트를 navigation_manager로 순차 전송"""
         if self.current_waypoint_index >= len(self.converted_waypoints_local):
             rospy.loginfo("🏁 모든 카카오 웨이포인트 완주!")
             self.complete_navigation()
@@ -435,7 +416,7 @@ class KakaoNavigationSystem:
         goal.pose.orientation.z = math.sin(yaw / 2.0)
         goal.pose.orientation.w = math.cos(yaw / 2.0)
         
-        # Goal 발행
+        # Goal을 navigation_manager로 전송 (단일 목표로 처리)
         self.goal_pub.publish(goal)
         self.current_goal_sent = True
         self.goal_start_time = rospy.Time.now()
@@ -444,15 +425,16 @@ class KakaoNavigationSystem:
         original_gps = current_wp["original_gps"]
         distance = self.calculate_distance(self.current_pose_local, current_wp)
         
-        rospy.loginfo(f"📍 웨이포인트 Goal 전송:")
+        rospy.loginfo(f"📍 웨이포인트를 navigation_manager로 전송:")
         rospy.loginfo(f"   진행: {self.current_waypoint_index + 1}/{len(self.converted_waypoints_local)}")
         rospy.loginfo(f"   GPS: ({original_gps['lat']:.6f}, {original_gps['lon']:.6f})")
         rospy.loginfo(f"   목표: Local({goal.pose.position.x:.1f}, {goal.pose.position.y:.1f})")
         rospy.loginfo(f"   거리: {distance:.1f}m")
         rospy.loginfo(f"   방향: {math.degrees(yaw):.1f}°")
+        rospy.loginfo(f"   → navigation_manager가 장애물 회피 및 최적화 담당")
         
     def move_to_next_waypoint(self):
-        """다음 웨이포인트로 이동"""
+        """순차적으로 다음 웨이포인트 전송"""
         self.completed_waypoints += 1
         progress = int((self.completed_waypoints / self.total_waypoints) * 100)
         
@@ -467,18 +449,18 @@ class KakaoNavigationSystem:
         if self.current_waypoint_index >= len(self.converted_waypoints_local):
             # 마지막 웨이포인트면 목적지로 이동
             if self.destination_local:
-                rospy.loginfo("🎯 최종 목적지로 이동 중...")
+                rospy.loginfo("🎯 최종 목적지로 순차 전송...")
                 self.send_destination_goal()
             else:
-                rospy.loginfo("🏁 모든 웨이포인트 완주!")
+                rospy.loginfo("🏁 모든 웨이포인트 순차 완주!")
                 self.complete_navigation()
         else:
-            rospy.loginfo(f"➡️ 다음 웨이포인트: {self.current_waypoint_index + 1}/{len(self.converted_waypoints_local)}")
-            rospy.sleep(1.0)  # 짧은 대기 후 다음 목표 전송
-            self.send_current_waypoint()
+            rospy.loginfo(f"🔄 순차 진행: {self.current_waypoint_index + 1}/{len(self.converted_waypoints_local)}")
+            rospy.sleep(1.0)  # navigation_manager 안정화 대기
+            self.send_current_waypoint()  # 다음 웨이포인트를 navigation_manager로 순차 전송
     
     def send_destination_goal(self):
-        """최종 목적지로 이동"""
+        """최종 목적지를 navigation_manager로 전송"""
         if not self.destination_local:
             self.complete_navigation()
             return
@@ -492,6 +474,7 @@ class KakaoNavigationSystem:
         goal.pose.position.z = 0.0
         goal.pose.orientation.w = 1.0  # 목적지에서는 방향 신경쓰지 않음
         
+        # 최종 목적지를 navigation_manager로 전송
         self.goal_pub.publish(goal)
         self.current_goal_sent = True
         self.goal_start_time = rospy.Time.now()
@@ -499,14 +482,15 @@ class KakaoNavigationSystem:
         distance = self.calculate_distance(self.current_pose_local, self.destination_local)
         dest_gps = self.destination_local["original_gps"]
         
-        rospy.loginfo(f"🎯 최종 목적지 Goal 전송:")
+        rospy.loginfo(f"🎯 최종 목적지를 navigation_manager로 전송:")
         rospy.loginfo(f"   GPS: ({dest_gps['lat']:.6f}, {dest_gps['lon']:.6f})")
         rospy.loginfo(f"   목표: Local({goal.pose.position.x:.1f}, {goal.pose.position.y:.1f})")
         rospy.loginfo(f"   거리: {distance:.1f}m")
+        rospy.loginfo(f"   → navigation_manager가 최종 목적지 최적화 담당")
     
     def complete_navigation(self):
-        """네비게이션 완료 및 상태 초기화"""
-        rospy.loginfo("🎉 카카오 자율주행 완료!")
+        """순차 네비게이션 완료 및 상태 초기화"""
+        rospy.loginfo("🎉 순차적 웨이포인트 자율주행 완료!")
         
         # 상태 초기화 (순서 중요!)
         self.is_navigating = False
@@ -516,24 +500,26 @@ class KakaoNavigationSystem:
         
         success_rate = (self.completed_waypoints / self.total_waypoints * 100) if self.total_waypoints > 0 else 0
         
-        rospy.loginfo(f"   총 웨이포인트: {self.total_waypoints}개")
+        rospy.loginfo(f"   총 웨이포인트: {self.total_waypoints}개 (순차 처리)")
         rospy.loginfo(f"   완료: {self.completed_waypoints}개")
         rospy.loginfo(f"   실패: {self.failed_waypoints}개")
         rospy.loginfo(f"   성공률: {success_rate:.1f}%")
         rospy.loginfo(f"   최종 웨이포인트 인덱스: {self.current_waypoint_index}")
+        rospy.loginfo(f"   🎯 navigation_manager를 통한 장애물 회피 완료")
         
         # 완료 상태 발행
         status = {
-            "status": "completed",
+            "status": "completed_sequential",
             "total_waypoints": self.total_waypoints,
             "completed_waypoints": self.completed_waypoints,
             "failed_waypoints": self.failed_waypoints,
             "success_rate": success_rate,
-            "final_waypoint_index": self.current_waypoint_index
+            "final_waypoint_index": self.current_waypoint_index,
+            "navigation_method": "sequential_via_navigation_manager"
         }
-        self.status_pub.publish(json.dumps(status))
+        self.status_pub.publish(String(data=json.dumps(status)))
         
-        rospy.loginfo("🔄 네비게이션 상태 초기화 완료 - 새로운 웨이포인트 수신 대기")
+        rospy.loginfo("🔄 순차 네비게이션 상태 초기화 완료 - 새로운 웨이포인트 수신 대기")
     
     def cancel_current_goal(self):
         """현재 move_base goal 취소"""
@@ -723,8 +709,8 @@ class KakaoNavigationSystem:
                 rospy.loginfo("🏁 최종 목적지 도달!")
                 self.complete_navigation()
             else:
-                # 다음 웨이포인트로 이동
-                rospy.loginfo(f"➡️ WP{self.current_waypoint_index + 1} 완료 → 다음 웨이포인트로 이동")
+                # 순차적으로 다음 웨이포인트 전송
+                rospy.loginfo(f"✅ WP{self.current_waypoint_index + 1} 완료 → 순차적으로 다음 웨이포인트 전송")
                 self.move_to_next_waypoint()
                 
         elif latest_status.status in [GoalStatus.ABORTED, GoalStatus.REJECTED]:  # FAILED (4, 5)
@@ -740,7 +726,7 @@ class KakaoNavigationSystem:
                 rospy.logerr("❌ 연속 실패 3회 → 네비게이션 중단")
                 self.complete_navigation()
     
-    def navigation_monitor(self, event):
+    def navigation_monitor(self, _):
         """네비게이션 모니터링 (타임아웃 체크)"""
         if not self.is_navigating or not self.current_goal_sent:
             return
@@ -763,7 +749,7 @@ class KakaoNavigationSystem:
                 rospy.logerr("❌ 연속 타임아웃 → 네비게이션 중단")
                 self.complete_navigation()
     
-    def status_monitor(self, event):
+    def status_monitor(self, _):
         """상태 모니터링 및 로깅"""
         if not self.is_navigating or not self.converted_waypoints_local:
             return
@@ -786,17 +772,18 @@ class KakaoNavigationSystem:
             distance = self.calculate_distance(self.current_pose_local, current_target)
             progress = int((self.completed_waypoints / self.total_waypoints) * 100) if self.total_waypoints > 0 else 0
             
-            rospy.loginfo_throttle(10, f"🚗 카카오 자율주행 진행 상황:")
-            rospy.loginfo_throttle(10, f"   진행률: {progress}% ({self.completed_waypoints}/{self.total_waypoints})")
-            rospy.loginfo_throttle(10, f"   현재 목표: {target_type} ({distance:.1f}m)")
-            rospy.loginfo_throttle(10, f"   현재 위치: Local({self.current_pose_local['x']:.1f}, {self.current_pose_local['y']:.1f})")
-            rospy.loginfo_throttle(10, f"   목표 위치: Local({current_target['x']:.1f}, {current_target['y']:.1f})")
+            rospy.loginfo_throttle(10, 
+                f"🚗 카카오 자율주행 진행 상황:\n"
+                f"   진행률: {progress}% ({self.completed_waypoints}/{self.total_waypoints})\n"
+                f"   현재 목표: {target_type} ({distance:.1f}m)\n"
+                f"   현재 위치: Local({self.current_pose_local['x']:.1f}, {self.current_pose_local['y']:.1f})\n"
+                f"   목표 위치: Local({current_target['x']:.1f}, {current_target['y']:.1f})")
             
             # 목표까지 너무 가까우면 도달 판정
             if distance <= self.waypoint_reached_threshold:
                 rospy.loginfo(f"📍 {target_type} 근접 도달! (거리: {distance:.1f}m)")
     
-    def publish_web_status(self, event):
+    def publish_web_status(self, _):
         """웹 인터페이스용 상태 정보 발행"""
         status = {
             "navigation_active": self.is_navigating,
@@ -820,7 +807,7 @@ class KakaoNavigationSystem:
                 "y": self.current_pose_local["y"]
             }
             
-        self.web_status_pub.publish(json.dumps(status))
+        self.web_status_pub.publish(String(data=json.dumps(status)))
 
 if __name__ == '__main__':
     try:

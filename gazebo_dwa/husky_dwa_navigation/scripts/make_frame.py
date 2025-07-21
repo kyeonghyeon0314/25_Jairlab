@@ -2,7 +2,6 @@
 import rospy
 import utm
 import json
-import math
 from sensor_msgs.msg import NavSatFix
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
@@ -54,7 +53,7 @@ class FrameMaker:
         
         # 첫 번째 FasterLIO 데이터면 원점으로 설정
         if self.fasterlio_origin is None:
-            self.fasterlio_origin = self.current_body_pose.copy()
+            self.fasterlio_origin = self.current_body_pose
             rospy.loginfo(f"✅ FasterLIO 원점 설정: {self.fasterlio_origin}")
 
     def gps_callback(self, msg):
@@ -107,22 +106,13 @@ class FrameMaker:
                 local_origin_easting = easting - fasterlio_rel_x
                 local_origin_northing = northing - fasterlio_rel_y
                 
-                rospy.loginfo(f"🔄 GPS-FasterLIO 동기화:")
-                rospy.loginfo(f"   FasterLIO 상대위치: ({fasterlio_rel_x:.2f}, {fasterlio_rel_y:.2f})")
-                rospy.loginfo(f"   로봇 현재 GPS: ({easting:.1f}, {northing:.1f})")
-                rospy.loginfo(f"   UTM Local 원점: ({local_origin_easting:.1f}, {local_origin_northing:.1f})")
+                rospy.loginfo(f"🔄 GPS-FasterLIO 동기화: FasterLIO상대({fasterlio_rel_x:.2f}, {fasterlio_rel_y:.2f}) → 로봇GPS({easting:.1f}, {northing:.1f}) → UTM원점({local_origin_easting:.1f}, {local_origin_northing:.1f})")
                 
                 self.utm_origin_absolute = {
                     "easting": local_origin_easting,
                     "northing": local_origin_northing,
                     "lat": lat,
-                    "lon": lon,
-                    "robot_current_gps": {
-                        "lat": lat, 
-                        "lon": lon, 
-                        "easting": easting, 
-                        "northing": northing
-                    }
+                    "lon": lon
                 }
             else:
                 # FasterLIO 위치 정보가 없으면 GPS 위치를 원점으로 설정
@@ -131,13 +121,7 @@ class FrameMaker:
                     "easting": easting,
                     "northing": northing,
                     "lat": lat,
-                    "lon": lon,
-                    "robot_current_gps": {
-                        "lat": lat, 
-                        "lon": lon, 
-                        "easting": easting, 
-                        "northing": northing
-                    }
+                    "lon": lon
                 }
             
             self.utm_zone = f"{zone_num}{zone_letter}"
@@ -148,10 +132,7 @@ class FrameMaker:
             # Static TF 발행
             self.broadcast_static_tf()
             
-            rospy.loginfo(f"✅ UTM Local 원점 설정 완료!")
-            rospy.loginfo(f"   Zone: {self.utm_zone}")
-            rospy.loginfo(f"   절대 UTM 원점: ({self.utm_origin_absolute['easting']:.1f}, {self.utm_origin_absolute['northing']:.1f})")
-            rospy.loginfo(f"   🎯 현재 로봇 위치 = UTM Local (0, 0)")
+            rospy.loginfo(f"✅ UTM Local 원점 설정 완료! Zone:{self.utm_zone} 절대UTM({self.utm_origin_absolute['easting']:.1f}, {self.utm_origin_absolute['northing']:.1f}) → 로봇=Local(0,0)")
             
             return True
             
@@ -173,7 +154,7 @@ class FrameMaker:
             self.utm_origin_pub.publish(json.dumps(origin_info))
             rospy.loginfo("📡 UTM 원점 정보 발행 완료")
 
-    def publish_gps_data(self, event):
+    def publish_gps_data(self, _):
         """실시간 GPS 데이터 발행 (웹 인터페이스용)"""
         if self.current_gps:
             self.gps_data_pub.publish(json.dumps(self.current_gps))
