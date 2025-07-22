@@ -59,7 +59,16 @@ class PoseInitializer:
             "last_correction_time": 0.0,
             "move_front_detected": False,
             "move_front_start_time": None,
+            "move_front_completed": False,
             "movement_phases": self.MOVE_FRONT_TIMING.copy()  # 위의 설정값 사용
+        }
+        
+        # 🚀 개선 1: 움직임 감지 시스템 (정지 상태 데이터 무시)
+        self.motion_detector = {
+            "is_moving": False,
+            "last_position": None,
+            "stationary_threshold": 0.05,  # 5cm 이하 움직임은 정지로 간주
+            "movement_start_time": None
         }
         
         # 현재 위치 및 불확실성
@@ -132,13 +141,17 @@ class PoseInitializer:
             return "completed"
 
     def collect_gps_candidates(self, gps_msg):
-        """🌟 GPS 후보 수집 및 신뢰도 평가"""
+        """🌟 GPS 후보 수집 및 신뢰도 평가 (움직일 때만)"""
         if gps_msg.status.status < 0:
+            return False
+        
+        # 🚀 개선: 움직일 때만 GPS 후보 수집
+        if not self.motion_detector["is_moving"]:
             return False
             
         if self.gps_collection_start_time is None:
             self.gps_collection_start_time = rospy.Time.now()
-            rospy.loginfo("🔄 GPS 후보 수집 시작 (신뢰도 기반 원점 설정)")
+            rospy.loginfo("🔄 GPS 후보 수집 시작 (움직임 감지 후 신뢰도 기반 원점 설정)")
         
         # GPS 품질 평가 메트릭
         quality_score = self.evaluate_gps_quality(gps_msg)
@@ -304,14 +317,14 @@ class PoseInitializer:
                 rospy.logwarn(f"⚠️ UTM 원점 데이터 파싱 실패: {e}")
 
     def fasterlio_callback(self, msg):
-        """FasterLIO 콜백 - 메인 위치 추정 로직"""
+        """FasterLIO 콜백 - 메인 위치 추정 로직 (움직일 때만)"""
         if not self.origin_synced:
             return
 
         timestamp = msg.header.stamp.to_sec()
         
         # FasterLIO 원시 pose 저장
-        self.current_body_pose = {
+        current_pose = {
             "x": msg.pose.pose.position.x,
             "y": msg.pose.pose.position.y,
             "z": msg.pose.pose.position.z,
@@ -322,10 +335,19 @@ class PoseInitializer:
             "timestamp": timestamp
         }
         
-        # 첫 번째 포즈면 기준점 설정
+        # 🚀 개선: 움직임 감지 업데이트
+        self.update_motion_detection(current_pose)
+        
+        # 🚀 개선: 움직일 때만 데이터 처리
+        if not self.motion_detector["is_moving"]:
+            return
+        
+        self.current_body_pose = current_pose
+        
+        # 첫 번째 포즈면 기준점 설정 (움직임 시작 후)
         if self.fasterlio_origin is None:
             self.fasterlio_origin = self.current_body_pose.copy()
-            rospy.loginfo("🎯 FasterLIO 기준점 설정 완료")
+            rospy.loginfo("🎯 FasterLIO 기준점 설정 완료 (움직임 감지 후)")
 
         # 궤적 처리 및 보정 수행
         self.process_trajectories()
@@ -333,6 +355,10 @@ class PoseInitializer:
 
     def cmd_vel_callback(self, msg):
         """🚗 move_front 패턴 감지"""
+        # 🚀 개선: 헤딩 보정 완료 후 로그 중단
+        if self.correction_system["initial_alignment_done"]:
+            return
+            
         # 직진 움직임 감지 (angular.z가 거의 0이고 linear.x > 0)
         is_forward_motion = (msg.linear.x > 0.1 and abs(msg.angular.z) < 0.05)
         
@@ -347,13 +373,13 @@ class PoseInitializer:
             total_expected = sum(self.correction_system["movement_phases"].values())
             
             if elapsed >= total_expected * 0.8:  # 80% 이상 완료되었다면
-                rospy.loginfo("🚗 move_front 패턴 완료 감지 - 헤딩 보정 트리거")
-                self.trigger_move_front_heading_correction()
+                rospy.loginfo("🚗 move_front 패턴 완료 감지 - 헤딩 보정 대기")
+                self.correction_system["move_front_completed"] = True
             
             self.correction_system["move_front_detected"] = False
 
     def gps_callback(self, msg):
-        """개선된 GPS 콜백 - 신뢰도 기반 원점 설정"""
+        """개선된 GPS 콜백 - 신뢰도 기반 원점 설정 (움직일 때만)"""
         if msg.status.status < 0:
             return
             
@@ -361,6 +387,10 @@ class PoseInitializer:
         if not self.origin_synced:
             if self.collect_gps_candidates(msg):
                 rospy.loginfo("✅ GPS 기반 UTM 원점 설정 완료!")
+            return
+        
+        # 🚀 개선: 움직일 때만 GPS 궤적 처리
+        if not self.motion_detector["is_moving"]:
             return
         
         timestamp = msg.header.stamp.to_sec()
@@ -414,16 +444,17 @@ class PoseInitializer:
         # 거리 추적
         self.update_distance(local_point)
 
-        # 🚗 move_front 기반 헤딩 보정 우선 시도
+        # 🚀 개선: move_front 완료 후에만 헤딩 보정 수행
         if (not self.correction_system["initial_alignment_done"] and 
-            self.correction_system["move_front_detected"]):
-            # move_front 실행 중일 때는 특별한 헤딩 보정 로직 사용
-            self.process_move_front_heading_correction()
+            self.correction_system["move_front_completed"]):
+            rospy.loginfo("🚗 move_front 완료 감지 → 최종 헤딩 보정 수행")
+            self.perform_move_front_final_correction()
         
-        # 일반적인 초기 정렬 체크 (조건 완화)
+        # 일반적인 초기 정렬 체크 (move_front 없이 움직인 경우)
         elif (not self.correction_system["initial_alignment_done"] and 
-            (self.total_distance >= 0.5 or 
-             (len(self.fasterlio_trajectory_local) >= 3 and len(self.gps_trajectory_local) >= 2))):
+              not self.correction_system["move_front_detected"] and
+              (self.total_distance >= 2.0 or 
+               (len(self.fasterlio_trajectory_local) >= 5 and len(self.gps_trajectory_local) >= 5))):
             rospy.loginfo(f"📏 일반 초기 정렬 조건 충족 → Heading 정렬 수행")
             self.perform_initial_heading_alignment()
 
@@ -454,6 +485,10 @@ class PoseInitializer:
 
     def check_move_front_pattern(self, _):
         """🚗 move_front 패턴 모니터링"""
+        # 🚀 개선: 헤딩 보정 완료 후 로그 중단
+        if self.correction_system["initial_alignment_done"]:
+            return
+            
         if not self.correction_system["move_front_detected"]:
             return
             
@@ -476,129 +511,8 @@ class PoseInitializer:
         phase_display = phase_names.get(current_phase, "알 수 없음")
         rospy.loginfo_throttle(2, f"🚗 move_front 진행: {phase_display} 단계 ({elapsed:.1f}s/{total_expected:.1f}s)")
 
-    def process_move_front_heading_correction(self):
-        """🚗 move_front 실행 중 실시간 헤딩 보정"""
-        if (len(self.fasterlio_trajectory_local) < 3 or 
-            len(self.gps_trajectory_local) < 3):
-            return
-            
-        # move_front 시작 이후의 궤적만 사용
-        move_start_time = self.correction_system["move_front_start_time"].to_sec()
-        
-        # 시작 시점 이후의 FasterLIO 궤적 필터링
-        recent_fasterlio = [p for p in self.fasterlio_trajectory_local 
-                           if p["timestamp"] >= move_start_time]
-        
-        # 시작 시점 이후의 GPS 궤적 필터링  
-        recent_gps = [p for p in self.gps_trajectory_local 
-                     if p["timestamp"] >= move_start_time]
-        
-        if len(recent_fasterlio) < 3 or len(recent_gps) < 3:
-            return
-        
-        # 등속 구간의 데이터만 사용 (더 정확한 직진 방향)
-        elapsed = (rospy.Time.now() - self.correction_system["move_front_start_time"]).to_sec()
-        current_phase = self.get_current_move_front_phase(elapsed)
-        
-        if current_phase == "constant":
-            # 등속 구간에서 헤딩 보정 수행
-            self.perform_constant_speed_heading_correction(recent_fasterlio, recent_gps)
 
-    def perform_constant_speed_heading_correction(self, fasterlio_points, gps_points):
-        """🎯 등속 구간 데이터로 정밀 헤딩 보정"""
-        # 등속 구간 시작/끝 구간의 포인트 선택
-        if len(fasterlio_points) < 2 or len(gps_points) < 2:
-            return
-            
-        # 가장 최근 절반 구간만 사용 (등속 상태가 안정화된 구간)
-        half_len_flio = len(fasterlio_points) // 2
-        half_len_gps = len(gps_points) // 2
-        
-        stable_fasterlio = fasterlio_points[half_len_flio:]
-        stable_gps = gps_points[half_len_gps:]
-        
-        if len(stable_fasterlio) < 2 or len(stable_gps) < 2:
-            return
-        
-        # 직선 구간의 정확한 방향 계산
-        flio_start, flio_end = stable_fasterlio[0], stable_fasterlio[-1]
-        gps_start, gps_end = stable_gps[0], stable_gps[-1]
-        
-        # 충분한 이동 거리 확인
-        flio_distance = math.sqrt((flio_end["x"] - flio_start["x"])**2 + 
-                                 (flio_end["y"] - flio_start["y"])**2)
-        gps_distance = math.sqrt((gps_end["x"] - gps_start["x"])**2 + 
-                                (gps_end["y"] - gps_start["y"])**2)
-        
-        if flio_distance < 1.0 or gps_distance < 1.0:
-            return
-        
-        # 정밀 헤딩 계산
-        fasterlio_heading = math.atan2(flio_end["y"] - flio_start["y"], 
-                                      flio_end["x"] - flio_start["x"])
-        gps_heading = math.atan2(gps_end["y"] - gps_start["y"], 
-                                gps_end["x"] - gps_start["x"])
-        
-        angle_diff = self.normalize_angle(gps_heading - fasterlio_heading)
-        
-        # 더 보수적인 보정 적용 (정밀도가 높으므로)
-        if abs(angle_diff) > math.radians(1.0):  # 1도 이상 차이날 때만
-            self.correction_system["heading_correction"] = angle_diff
-            self.correction_system["initial_alignment_done"] = True
-            
-            rospy.loginfo("🚗 move_front 등속구간 헤딩 보정 완료!")
-            rospy.loginfo(f"   FasterLIO 방향: {math.degrees(fasterlio_heading):.2f}도")
-            rospy.loginfo(f"   GPS 방향: {math.degrees(gps_heading):.2f}도")
-            rospy.loginfo(f"   보정값: {math.degrees(angle_diff):.2f}도")
-            rospy.loginfo(f"   등속구간 거리: FLio={flio_distance:.1f}m, GPS={gps_distance:.1f}m")
-            
-            self.recalculate_all_trajectories()
 
-    def trigger_move_front_heading_correction(self):
-        """🚗 move_front 완료 후 최종 헤딩 보정"""
-        if self.correction_system["initial_alignment_done"]:
-            rospy.loginfo("✅ 이미 헤딩 보정 완료됨 - move_front 완료 이벤트 무시")
-            return
-            
-        # move_front 전체 구간 데이터로 최종 보정
-        move_start_time = self.correction_system["move_front_start_time"].to_sec()
-        
-        # 전체 move_front 구간의 궤적 필터링
-        move_fasterlio = [p for p in self.fasterlio_trajectory_local 
-                         if p["timestamp"] >= move_start_time]
-        move_gps = [p for p in self.gps_trajectory_local 
-                   if p["timestamp"] >= move_start_time]
-        
-        if len(move_fasterlio) >= 3 and len(move_gps) >= 3:
-            # 시작점과 끝점으로 전체 방향 계산
-            flio_start, flio_end = move_fasterlio[0], move_fasterlio[-1]
-            gps_start, gps_end = move_gps[0], move_gps[-1]
-            
-            total_flio_distance = math.sqrt((flio_end["x"] - flio_start["x"])**2 + 
-                                           (flio_end["y"] - flio_start["y"])**2)
-            total_gps_distance = math.sqrt((gps_end["x"] - gps_start["x"])**2 + 
-                                          (gps_end["y"] - gps_start["y"])**2)
-            
-            if total_flio_distance >= 2.0 and total_gps_distance >= 2.0:
-                fasterlio_heading = math.atan2(flio_end["y"] - flio_start["y"], 
-                                              flio_end["x"] - flio_start["x"])
-                gps_heading = math.atan2(gps_end["y"] - gps_start["y"], 
-                                        gps_end["x"] - gps_start["x"])
-                
-                angle_diff = self.normalize_angle(gps_heading - fasterlio_heading)
-                self.correction_system["heading_correction"] = angle_diff
-                self.correction_system["initial_alignment_done"] = True
-                
-                rospy.loginfo("🚗 move_front 완료 기반 최종 헤딩 보정!")
-                rospy.loginfo(f"   전체 이동거리: FLio={total_flio_distance:.1f}m, GPS={total_gps_distance:.1f}m")
-                rospy.loginfo(f"   최종 보정값: {math.degrees(angle_diff):.2f}도")
-                
-                self.recalculate_all_trajectories()
-                return
-        
-        # move_front 데이터가 부족하면 기본 방법 사용
-        rospy.logwarn("⚠️ move_front 데이터 부족 - 기본 헤딩 보정 방법 시도")
-        self.perform_initial_heading_alignment()
 
     def check_gradual_heading_correction(self, _):
         """🔄 점진적 Heading 보정 체크 (2초마다)"""
@@ -943,6 +857,86 @@ class PoseInitializer:
         z = cr * cp * sy - sr * sp * cy
         
         return x, y, z, w
+
+    def update_motion_detection(self, current_pose):
+        """🚀 움직임 감지 시스템 - 정지 상태 데이터 무시"""
+        if self.motion_detector["last_position"] is None:
+            self.motion_detector["last_position"] = current_pose.copy()
+            return
+        
+        # 이전 위치와의 거리 계산
+        dx = current_pose["x"] - self.motion_detector["last_position"]["x"]
+        dy = current_pose["y"] - self.motion_detector["last_position"]["y"]
+        distance = math.sqrt(dx*dx + dy*dy)
+        
+        # 움직임 상태 업데이트
+        if distance > self.motion_detector["stationary_threshold"]:
+            if not self.motion_detector["is_moving"]:
+                self.motion_detector["is_moving"] = True
+                self.motion_detector["movement_start_time"] = rospy.Time.now()
+                rospy.loginfo(f"🏃 움직임 감지! 거리: {distance:.3f}m")
+            
+            self.motion_detector["last_position"] = current_pose.copy()
+        # else: 정지 상태 유지
+    
+    def perform_move_front_final_correction(self):
+        """🚗 move_front 완료 후 최종 헤딩 보정"""
+        if self.correction_system["initial_alignment_done"]:
+            rospy.loginfo("✅ 이미 헤딩 보정 완료됨 - move_front 보정 무시")
+            return
+            
+        # move_front 시작 이후의 궤적 데이터 필터링
+        if self.correction_system["move_front_start_time"] is None:
+            rospy.logwarn("⚠️ move_front 시작 시간 누락 - 기본 보정 방법 사용")
+            self.perform_initial_heading_alignment()
+            return
+            
+        move_start_time = self.correction_system["move_front_start_time"].to_sec()
+        
+        # move_front 시작 이후의 FasterLIO 궤적 필터링
+        move_fasterlio = [p for p in self.fasterlio_trajectory_local 
+                         if p["timestamp"] >= move_start_time]
+        
+        # move_front 시작 이후의 GPS 궤적 필터링  
+        move_gps = [p for p in self.gps_trajectory_local 
+                   if p["timestamp"] >= move_start_time]
+        
+        if len(move_fasterlio) < 5 or len(move_gps) < 5:
+            rospy.logwarn(f"⚠️ move_front 데이터 부족: FLio={len(move_fasterlio)}, GPS={len(move_gps)} - 기본 보정 시도")
+            self.perform_initial_heading_alignment()
+            return
+            
+        # 시작점과 끝점으로 전체 방향 계산 (충분한 샘플 확보)
+        flio_start, flio_end = move_fasterlio[0], move_fasterlio[-1]
+        gps_start, gps_end = move_gps[0], move_gps[-1]
+        
+        total_flio_distance = math.sqrt((flio_end["x"] - flio_start["x"])**2 + 
+                                       (flio_end["y"] - flio_start["y"])**2)
+        total_gps_distance = math.sqrt((gps_end["x"] - gps_start["x"])**2 + 
+                                      (gps_end["y"] - gps_start["y"])**2)
+        
+        if total_flio_distance < 3.0 or total_gps_distance < 3.0:
+            rospy.logwarn(f"⚠️ move_front 이동거리 부족: FLio={total_flio_distance:.1f}m, GPS={total_gps_distance:.1f}m")
+            return
+        
+        # 정밀 헤딩 계산
+        fasterlio_heading = math.atan2(flio_end["y"] - flio_start["y"], 
+                                      flio_end["x"] - flio_start["x"])
+        gps_heading = math.atan2(gps_end["y"] - gps_start["y"], 
+                                gps_end["x"] - gps_start["x"])
+        
+        angle_diff = self.normalize_angle(gps_heading - fasterlio_heading)
+        self.correction_system["heading_correction"] = angle_diff
+        self.correction_system["initial_alignment_done"] = True
+        
+        rospy.loginfo("🏆 move_front 완료 기반 최종 헤딩 보정 완료!")
+        rospy.loginfo(f"   전체 이동거리: FLio={total_flio_distance:.1f}m, GPS={total_gps_distance:.1f}m")
+        rospy.loginfo(f"   사용된 샘플: FLio={len(move_fasterlio)}개, GPS={len(move_gps)}개")
+        rospy.loginfo(f"   FasterLIO 방향: {math.degrees(fasterlio_heading):.2f}도")
+        rospy.loginfo(f"   GPS 방향: {math.degrees(gps_heading):.2f}도")
+        rospy.loginfo(f"   최종 보정값: {math.degrees(angle_diff):.2f}도")
+        
+        self.recalculate_all_trajectories()
 
     def run(self):
         rospy.spin()

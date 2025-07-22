@@ -270,6 +270,11 @@
                         shouldInclude = true;
                         reason = `급곡선(${curvature.toFixed(1)}°)`;
                         campusStats.sharpCurves++;
+                    } else if (curvature > currentCurveThreshold && distanceFromLast >= (requiredInterval * 0.5)) {
+                        // 원형 곡선 감지: 임계값 이상 곡선에서 절반 간격으로 웨이포인트 추가
+                        shouldInclude = true;
+                        reason = `원형곡선(${curvature.toFixed(1)}°, ${distanceFromLast.toFixed(1)}m)`;
+                        campusStats.gentleCurves++;
                     } else if (distanceFromLast >= requiredInterval) {
                         // 각 구간별 필요 간격 이상일 때 포함
                         shouldInclude = true;
@@ -454,10 +459,26 @@
         }
 
         function calculateCurvature(p1, p2, p3) {
-            // 세 점으로 곡률 계산 (각도 변화율)
+            // 개선된 곡률 계산: 각도 변화율 / 거리 (원형 곡선 최적화)
             const bearing1 = calculateBearing(p1.getLat(), p1.getLng(), p2.getLat(), p2.getLng());
             const bearing2 = calculateBearing(p2.getLat(), p2.getLng(), p3.getLat(), p3.getLng());
-            return calculateAngleDifference(bearing1, bearing2);
+            const angleDiff = calculateAngleDifference(bearing1, bearing2);
+            
+            // 거리 정보를 포함한 곡률 계산
+            const dist1 = haversineDistance(p1.getLat(), p1.getLng(), p2.getLat(), p2.getLng());
+            const dist2 = haversineDistance(p2.getLat(), p2.getLng(), p3.getLat(), p3.getLng());
+            const avgDistance = (dist1 + dist2) / 2;
+            
+            // 원형 곡선 감지를 위한 가중치 적용
+            if (avgDistance < 5) {
+                // 매우 가까운 점들은 각도 변화에 더 민감
+                return angleDiff * 2;
+            } else if (avgDistance > 20) {
+                // 먼 거리의 점들은 곡률 가중치 증가 (원형 곡선 감지 향상)
+                return angleDiff * (1 + avgDistance / 50);
+            }
+            
+            return angleDiff;
         }
 
         // 🎯 Douglas-Peucker 라인 간소화 알고리즘
