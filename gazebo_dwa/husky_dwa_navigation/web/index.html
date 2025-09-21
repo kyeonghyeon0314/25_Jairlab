@@ -24,11 +24,49 @@
             z-index: 1;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 1;
+            font-family: Arial, sans-serif;
+        }
+        #controls label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        #controls input[type="range"] {
+            width: 150px;
+        }
+        #controls .value-display {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
     </style>
     <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=5aefe0539358793ca2935a52f01e03db&libraries=services"></script>
 </head>
 <body>
     <div id="status">GPS 연결 대기 중...</div>
+    <div id="controls">
+        <label>캠퍼스 Waypoints 간격</label>
+        <input type="range" id="distanceSlider" min="3" max="15" value="8" step="1">
+        <div class="value-display" id="distanceValue">8m 간격</div>
+        
+        <label style="margin-top: 10px;">곡선 정밀도</label>
+        <input type="range" id="curveSlider" min="3" max="15" value="8" step="1">
+        <div class="value-display" id="curveValue">8° 곡선 임계값</div>
+        
+        <div style="font-size: 11px; color: #888; margin-top: 5px;">
+            캠퍼스 최적화: 3m(매우정밀) / 8m(권장) / 15m(성김)
+        </div>
+    </div>
     <div id="map"></div>
 
     <script>
@@ -61,6 +99,21 @@
 
         // ✅ GPS 고정 제어 변수
         var firstGpsReceived = false;
+        
+        // 📊 캠퍼스 특화 Waypoints 제어 변수들
+        var currentMinDistance = 8;  // 캠퍼스 환경에 맞는 기본 간격
+        var currentCurveThreshold = 8; // 더 민감한 곡선 감지
+        
+        // 슬라이더 이벤트 처리
+        document.getElementById('distanceSlider').addEventListener('input', function() {
+            currentMinDistance = parseInt(this.value);
+            document.getElementById('distanceValue').innerText = currentMinDistance + 'm 간격';
+        });
+        
+        document.getElementById('curveSlider').addEventListener('input', function() {
+            currentCurveThreshold = parseInt(this.value);
+            document.getElementById('curveValue').innerText = currentCurveThreshold + '° 곡선 임계값';
+        });
 
         function updateLocation(lat, lon) {
             if (!lat || !lon) return;
@@ -95,6 +148,7 @@
             var url = 'https://apis-navi.kakaomobility.com/v1/directions';
             url += '?origin=' + startPos.getLng() + ',' + startPos.getLat();
             url += '&destination=' + endPos.getLng() + ',' + endPos.getLat();
+            url += '&priority=DISTANCE';  // 최단거리 우선
 
             document.getElementById("status").innerText = "경로 계산 중...";
 
@@ -121,19 +175,150 @@
                 console.log("📍 sections 개수:", data.routes[0].sections.length);
                 console.log("📍 roads 개수:", data.routes[0].sections[0].roads.length);
 
-                data.routes[0].sections[0].roads.forEach(function(road, roadIndex) {
-                    console.log(`📍 Road ${roadIndex} vertexes:`, road.vertexes);
-                    
+                // 📊 waypoints 거리 기반 필터링 설정 (사용자 설정값 사용)
+                var minDistance = currentMinDistance;
+                var lastWaypoint = null;
+                var totalVertexes = 0;
+                var filteredCount = 0;
+                var allVertexes = [];  // 모든 vertex를 저장하여 마지막 점 보장
+
+                // 모든 vertex 수집
+                data.routes[0].sections[0].roads.forEach(function(road) {
                     for (let i = 0; i < road.vertexes.length; i += 2) {
                         var lng = road.vertexes[i];
                         var lat = road.vertexes[i + 1];
-                        
                         if (lng && lat) {
-                            waypoints.push(new kakao.maps.LatLng(lat, lng));
-                            console.log(`📍 Waypoint ${waypoints.length}: ${lat}, ${lng}`);
+                            allVertexes.push(new kakao.maps.LatLng(lat, lng));
+                            totalVertexes++;
                         }
                     }
                 });
+
+                console.log(`📊 총 ${totalVertexes}개 vertex 수집 완료`);
+
+                // 🎯 캠퍼스 특화 각도 기반 적응형 필터링
+                var campusStats = {
+                    straightSegments: 0,
+                    gentleCurves: 0, 
+                    sharpCurves: 0,
+                    keyPoints: 0
+                };
+                
+                var lastWaypoint = null;
+                var filteredCount = 0;
+                
+                // 캠퍼스 환경 맞춤 임계값
+                const straightThreshold = currentCurveThreshold;      // 8도 미만: 직선
+                const gentleCurveThreshold = currentCurveThreshold * 2; // 8-16도: 완만한 곡선  
+                const sharpCurveThreshold = currentCurveThreshold * 3;  // 16-24도: 급곡선
+                
+                const straightInterval = minDistance * 1.5;  // 직선: 12m 간격
+                const gentleCurveInterval = minDistance;     // 완만한 곡선: 8m 간격
+                const sharpCurveInterval = minDistance * 0.6; // 급곡선: 5m 간격
+                
+                for (let i = 0; i < allVertexes.length; i++) {
+                    var currentPoint = allVertexes[i];
+                    var isFirstPoint = (i === 0);
+                    var isLastPoint = (i === allVertexes.length - 1);
+                    
+                    // 시작점과 끝점은 항상 포함
+                    if (isFirstPoint || isLastPoint) {
+                        waypoints.push(currentPoint);
+                        lastWaypoint = currentPoint;
+                        filteredCount++;
+                        campusStats.keyPoints++;
+                        console.log(`📍 Waypoint ${waypoints.length}: ${currentPoint.getLat().toFixed(6)}, ${currentPoint.getLng().toFixed(6)} ${isLastPoint ? '(목적지)' : '(출발점)'}`);
+                        continue;
+                    }
+                    
+                    if (lastWaypoint == null) continue;
+                    
+                    // 거리 계산
+                    var distanceFromLast = haversineDistance(
+                        lastWaypoint.getLat(), lastWaypoint.getLng(), 
+                        currentPoint.getLat(), currentPoint.getLng()
+                    );
+                    
+                    // 곡률 계산 (최소 3개 점이 있을 때)
+                    var curvature = 0;
+                    var curveType = "unknown";
+                    var requiredInterval = minDistance;
+                    
+                    if (waypoints.length >= 2 && i < allVertexes.length - 1) {
+                        var prevPoint = waypoints[waypoints.length - 2];
+                        var nextPoint = allVertexes[Math.min(i + 2, allVertexes.length - 1)]; // 2칸 앞의 점으로 더 정확한 곡률 계산
+                        curvature = calculateCurvature(prevPoint, currentPoint, nextPoint);
+                        
+                        if (curvature < straightThreshold) {
+                            curveType = "직선";
+                            requiredInterval = straightInterval;
+                        } else if (curvature < gentleCurveThreshold) {
+                            curveType = "완만한곡선";
+                            requiredInterval = gentleCurveInterval;
+                        } else {
+                            curveType = "급곡선";
+                            requiredInterval = sharpCurveInterval;
+                        }
+                    }
+                    
+                    // 포함 여부 결정
+                    var shouldInclude = false;
+                    var reason = "";
+                    
+                    if (curvature > sharpCurveThreshold) {
+                        // 급곡선은 거리 관계없이 포함
+                        shouldInclude = true;
+                        reason = `급곡선(${curvature.toFixed(1)}°)`;
+                        campusStats.sharpCurves++;
+                    } else if (curvature > currentCurveThreshold && distanceFromLast >= (requiredInterval * 0.5)) {
+                        // 원형 곡선 감지: 임계값 이상 곡선에서 절반 간격으로 웨이포인트 추가
+                        shouldInclude = true;
+                        reason = `원형곡선(${curvature.toFixed(1)}°, ${distanceFromLast.toFixed(1)}m)`;
+                        campusStats.gentleCurves++;
+                    } else if (distanceFromLast >= requiredInterval) {
+                        // 각 구간별 필요 간격 이상일 때 포함
+                        shouldInclude = true;
+                        reason = `${curveType}(${distanceFromLast.toFixed(1)}m)`;
+                        
+                        if (curveType === "직선") campusStats.straightSegments++;
+                        else if (curveType === "완만한곡선") campusStats.gentleCurves++;
+                    }
+                    
+                    if (shouldInclude) {
+                        waypoints.push(currentPoint);
+                        lastWaypoint = currentPoint;
+                        filteredCount++;
+                        
+                        // 중요한 곡선점들과 처음/마지막 몇 개만 상세 로그
+                        if (filteredCount <= 3 || filteredCount > allVertexes.length - 3 || curvature > sharpCurveThreshold) {
+                            console.log(`📍 Waypoint ${waypoints.length}: ${currentPoint.getLat().toFixed(6)}, ${currentPoint.getLng().toFixed(6)} [${reason}]`);
+                        }
+                    }
+                }
+                
+                // 캠퍼스 최적화 통계
+                console.log(`🎓 캠퍼스 경로 최적화 완료:`);
+                console.log(`   - 기본 간격: ${minDistance}m, 곡선 감도: ${currentCurveThreshold}°`);
+                console.log(`   - 직선 구간: ${campusStats.straightSegments}개 (${straightInterval}m 간격)`);
+                console.log(`   - 완만한 곡선: ${campusStats.gentleCurves}개 (${gentleCurveInterval}m 간격)`);
+                console.log(`   - 급곡선: ${campusStats.sharpCurves}개 (${sharpCurveInterval}m 간격)`);
+                console.log(`   - 핵심 지점: ${campusStats.keyPoints}개`);
+                
+                var reductionRate = ((totalVertexes - waypoints.length) / totalVertexes * 100).toFixed(1);
+                console.log(`🎯 최종 최적화: ${totalVertexes}개 → ${waypoints.length}개 (${reductionRate}% 감소)`);
+                
+                if (waypoints.length > 1) {
+                    const totalDistance = haversineDistance(waypoints[0].getLat(), waypoints[0].getLng(), waypoints[waypoints.length-1].getLat(), waypoints[waypoints.length-1].getLng());
+                    const averageInterval = totalDistance / (waypoints.length - 1);
+                    console.log(`📏 총 거리: ${(totalDistance/1000).toFixed(2)}km, 평균 간격: ${averageInterval.toFixed(1)}m`);
+                    
+                    // 캠퍼스 주행에 적합한지 평가
+                    if (averageInterval < 15 && waypoints.length < 50) {
+                        console.log(`✅ 캠퍼스 자율주행에 최적화됨 (평균간격 ${averageInterval.toFixed(1)}m)`);
+                    } else if (averageInterval > 20) {
+                        console.log(`⚠️ 너무 성긴 경로 - 정밀도 향상 권장`);
+                    }
+                }
 
                 console.log("🗺️ 최종 웨이포인트 개수:", waypoints.length);
                 
@@ -250,6 +435,89 @@
                 Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
                 Math.sin(dLon / 2) * Math.sin(dLon / 2);
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        // 📐 각도 기반 필터링 함수들
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const toRad = degree => degree * Math.PI / 180;
+            const toDeg = radian => radian * 180 / Math.PI;
+            const dLon = toRad(lon2 - lon1);
+            const lat1Rad = toRad(lat1);
+            const lat2Rad = toRad(lat2);
+            
+            const y = Math.sin(dLon) * Math.cos(lat2Rad);
+            const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+            
+            let bearing = toDeg(Math.atan2(y, x));
+            return (bearing + 360) % 360; // 0-360도로 정규화
+        }
+
+        function calculateAngleDifference(bearing1, bearing2) {
+            let diff = Math.abs(bearing1 - bearing2);
+            if (diff > 180) diff = 360 - diff;
+            return diff;
+        }
+
+        function calculateCurvature(p1, p2, p3) {
+            // 개선된 곡률 계산: 각도 변화율 / 거리 (원형 곡선 최적화)
+            const bearing1 = calculateBearing(p1.getLat(), p1.getLng(), p2.getLat(), p2.getLng());
+            const bearing2 = calculateBearing(p2.getLat(), p2.getLng(), p3.getLat(), p3.getLng());
+            const angleDiff = calculateAngleDifference(bearing1, bearing2);
+            
+            // 거리 정보를 포함한 곡률 계산
+            const dist1 = haversineDistance(p1.getLat(), p1.getLng(), p2.getLat(), p2.getLng());
+            const dist2 = haversineDistance(p2.getLat(), p2.getLng(), p3.getLat(), p3.getLng());
+            const avgDistance = (dist1 + dist2) / 2;
+            
+            // 원형 곡선 감지를 위한 가중치 적용
+            if (avgDistance < 5) {
+                // 매우 가까운 점들은 각도 변화에 더 민감
+                return angleDiff * 2;
+            } else if (avgDistance > 20) {
+                // 먼 거리의 점들은 곡률 가중치 증가 (원형 곡선 감지 향상)
+                return angleDiff * (1 + avgDistance / 50);
+            }
+            
+            return angleDiff;
+        }
+
+        // 🎯 Douglas-Peucker 라인 간소화 알고리즘
+        function perpendicularDistance(point, lineStart, lineEnd) {
+            // 점과 직선 사이의 수직 거리 계산
+            const A = lineEnd.getLat() - lineStart.getLat();
+            const B = lineStart.getLng() - lineEnd.getLng();
+            const C = lineEnd.getLng() * lineStart.getLat() - lineStart.getLng() * lineEnd.getLat();
+            
+            const distance = Math.abs(A * point.getLng() + B * point.getLat() + C) / Math.sqrt(A * A + B * B);
+            return distance * 111320; // 도를 미터로 변환 (대략적)
+        }
+
+        function douglasPeucker(points, epsilon) {
+            if (points.length <= 2) return points;
+            
+            // 첫 번째와 마지막 점 사이의 직선을 기준으로 가장 먼 점 찾기
+            let maxDistance = 0;
+            let maxIndex = 0;
+            
+            for (let i = 1; i < points.length - 1; i++) {
+                const distance = perpendicularDistance(points[i], points[0], points[points.length - 1]);
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                    maxIndex = i;
+                }
+            }
+            
+            // 최대 거리가 임계값보다 크면 재귀적으로 간소화
+            if (maxDistance > epsilon) {
+                const leftPart = douglasPeucker(points.slice(0, maxIndex + 1), epsilon);
+                const rightPart = douglasPeucker(points.slice(maxIndex), epsilon);
+                
+                // 중복 점 제거하고 합치기
+                return leftPart.slice(0, -1).concat(rightPart);
+            } else {
+                // 임계값보다 작으면 시작점과 끝점만 반환
+                return [points[0], points[points.length - 1]];
+            }
         }
 
         kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
