@@ -12,7 +12,7 @@
 - ROS Noetic
 
 
-## 🎯 시스템 개요
+##  시스템 개요
 
 본 시스템은 다음과 같은 주요 기능을 제공합니다:
 
@@ -22,7 +22,7 @@
 - **Localization**: Faster-LIO를 통한 경량 라이다-관성 오도메트리
 - **위치 추정**: GPS와 Ouster 라이다 센서 통합
 
-## 🚀 사용법
+##  사용법
 실행 순서
 ```bash
 # 설치 필요
@@ -47,7 +47,7 @@ rosrun husky_dwa_navigation sync2.py
 rosbag play <*.bag> /ouster/points:=/new_points /ouster/imu:=/new_imu
 ```
 
-## 🔧 핵심 구성요소
+##  핵심 구성요소
 
 ### 1. 전역 경로 계획 (Global Path Planning)
 카카오 내비 API를 활용한 웹 기반 GPS 좌표 수집 시스템
