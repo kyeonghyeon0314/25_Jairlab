@@ -101,3 +101,6 @@ Faster-LIO의 Iterated Error State Kalman Filter를 그대로 사용
 - Hash map capacity를 100,000d으로 축소
 - z축으로 정사영
 - map 생성 알고리즘 삭제
+
+---
+**Developed with AI Robotics Lab, JBNU**
