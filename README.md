@@ -11,7 +11,7 @@
 | 역할     | 이름     | 소속 | GitHub / Repository |
 |----------|----------|------|------|
 | 팀장     | 김경현   | 전자공학부 (20) |[kyeonghyeon0314 (gazebo_dwa)](https://github.com/kyeonghyeon0314/gazebo_dwa/tree/main)|
-| 팀원     | 김동훈   | 전자공학부 (21) |[kdh044 (local_path_planner)](https://github.com/kdh044/Jbnu-Final/tree/main)          |
+| 팀원     | 김동훈   | 전자공학부 (21) |[kdh044 (global_path_planner)](https://github.com/kdh044/global_path)          |
 | 팀원     | 양현웅   | 전자공학부 (20) | [tomark (FRNet_ROS)](https://github.com/t0mark/FRNet_ROS)                            |
 | 팀원     | 이성찬   | 전자공학부 (20) | - |
 | 팀원     | 염선욱   | 물리학과 (19)   | [SeonwookYeom (fasterlio-lightweight)](https://github.com/SeonwookYeom/25S_)        |
