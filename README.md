@@ -83,6 +83,7 @@ DWA 알고리즘을 이용한 장애물 회피 및 지역 경로 계획
 **작성자의 저장소**: 
 - [gazebo_dwa : kyeonghyeon0314](https://github.com/kyeonghyeon0314/gazebo_dwa/tree/main)
 - [local_path_planner : kdh044](https://github.com/kdh044/Jbnu-Final/tree/main)
+- [fasterlio (lightweight) : SeonwookYeom](https://github.com/SeonwookYeom/25S_) 
 
 
 ### 4. Localization (Faster-LIO)
