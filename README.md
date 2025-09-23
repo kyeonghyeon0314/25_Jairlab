@@ -13,8 +13,8 @@
 | 팀장     | 김경현   | 전자공학부 20학번 |[gazebo_dwa : kyeonghyeon0314](https://github.com/kyeonghyeon0314/gazebo_dwa/tree/main)|
 | 팀원     | 김동훈   | 전자공학부 21학번 |[local_path_planner : kdh044](https://github.com/kdh044/Jbnu-Final/tree/main)          |
 | 팀원     | 양현웅   | 전자공학부 20학번 | [FRNet_ROS : tomark](https://github.com/t0mark/FRNet_ROS)                            |
-| 팀원     | 이성찬   | 전자공학부 20학번 | [fasterlio (lightweight) : SeonwookYeom](https://github.com/SeonwookYeom/25S_)        |
-| 팀원     | 염선욱   | 물리학과 19학번   |
+| 팀원     | 이성찬   | 전자공학부 20학번 |
+| 팀원     | 염선욱   | 물리학과 19학번   | [fasterlio (lightweight) : SeonwookYeom](https://github.com/SeonwookYeom/25S_)        |
 
 ## 시스템 요구사항
 - Ubuntu 20.04 LTS
