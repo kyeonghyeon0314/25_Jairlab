@@ -4,27 +4,25 @@ footprint_padding: 0.01
 
 
 robot_base_frame: base_link
-update_frequency: 10.0
+update_frequency: 4.0
 publish_frequency: 3.0
 transform_tolerance: 0.5
 
 resolution: 0.05
 
-obstacle_range: 5.5
-raytrace_range: 6.0
-
 obstacles_laser:
     observation_sources: laser
-    laser: {data_type: LaserScan, clearing: true, marking: true, topic: /scan, inf_is_valid: true,
-            obstacle_range: 40,
-            raytrace_range: 45,
+    laser: {data_type: LaserScan, clearing: true, marking: true, topic: /velodyne_scan, inf_is_valid: true,
+            obstacle_range: 50,     # 전역 설정과 일치
+            raytrace_range: 55.0,    # 전역 설정과 일치
             observation_persistence: 0}
     
 # 인플레이션 레이어 설정  [장애물 주변에 추가적인 안전 영역(비용)을 부여하는 레이어입니다.]
 inflation_layer:
-  enabled: true              # 인플레이션 레이어 활성화 
-  #cost_scaling_factor: 5.0   # 비용 감소 비율
-  inflation_radius: 2.0      # 장애물 주변 인플레이션 반경 (m)
+  enabled: true              # 인플레이션 레이어 활성화
+  cost_scaling_factor: 5.0   # 비용 감소 비율 - 낮춘으로 더 넓은 영역에 높은 비용 유지
+  inflation_radius: 4.0    # 장애물 주변 인플레이션 반경 (m) - 현실적 범위로 설정
+
 
 
 # combination_method: 1
