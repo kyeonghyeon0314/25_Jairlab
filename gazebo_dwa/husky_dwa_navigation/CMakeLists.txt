@@ -57,7 +57,7 @@ catkin_install_python(
     scripts/initialize_pose.py
     scripts/make_frame.py
     scripts/move_front.py
-    scripts/sync2.py
+    scripts/sync.py
     scripts/waypoints_manager.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
@@ -79,7 +79,7 @@ install(
     scripts/initialize_pose.py
     scripts/make_frame.py
     scripts/move_front.py
-    scripts/sync2.py
+    scripts/sync.py
     scripts/waypoints_manager.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

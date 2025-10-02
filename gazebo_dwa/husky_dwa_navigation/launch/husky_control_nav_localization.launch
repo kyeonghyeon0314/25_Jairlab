@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   
-  <param name="/use_sim_time" value="true" />
+  <param name="/use_sim_time" value="false" />
 
   <!-- ===== 로봇 제어, 네비게이션, localization 및 모니터링 담당 ===== -->
   <!-- 환경 독립적: 시뮬레이션과 실제 환경에서 동일하게 사용 -->
