@@ -54,11 +54,35 @@
   <rosparam command="load" file="$(arg config_extras)" subst_value="true" />
 
 
-  <!-- ===== Localization (INS 추가해야함) ===== -->
+  <!-- ===== Localization (INS) ===== -->
+  <!-- GPS 좌표를 UTM으로 변환 -->
+  <node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform" respawn="true">
+    <param name="magnetic_declination_radians" value="0"/>
+    <param name="yaw_offset" value="0"/>
+    <param name="zero_altitude" value="true"/>
+    <param name="broadcast_utm_transform" value="true"/>
+    <param name="publish_filtered_gps" value="true"/>
+    <param name="use_odometry_yaw" value="false"/>
+    <param name="wait_for_datum" value="false"/>
+    <param name="frequency" value="10"/>
 
+    <remap from="/imu/data" to="/ouster/imu"/>
+    <remap from="/gps/fix" to="/ublox/fix"/>
+    <remap from="odometry/filtered" to="/gps/fix/odometry"/>
+  </node>
 
+  <!-- EKF - Local (odom frame 기준, GPS 없이 wheel odom + IMU) -->
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_local" clear_params="true" respawn="true">
+    <rosparam command="load" file="$(find husky_dwa_navigation)/config/ekf_local.yaml"/>
+    <remap from="odometry/filtered" to="/odometry/filtered/local"/>
+    <remap from="/imu/data" to="/ouster/imu"/>
+  </node>
 
-  
+  <!-- EKF - Global (map frame 기준, GPS 융합) -->
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_global" clear_params="true" respawn="true">
+    <rosparam command="load" file="$(find husky_dwa_navigation)/config/ekf_global.yaml"/>
+    <remap from="odometry/filtered" to="/odometry/filtered/global"/>
+  </node>
 
   <!-- ===== 포인트 클라우드 처리 파이프라인 ===== -->
   <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" />
