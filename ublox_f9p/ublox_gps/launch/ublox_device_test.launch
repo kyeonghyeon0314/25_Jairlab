@@ -18,8 +18,8 @@
         clear_params="$(arg clear_params)"
         respawn="$(arg respawn)"
         respawn_delay="$(arg respawn_delay)">
-    <!-- 토픽 리매핑: fix -> fix_input -->
-    <remap from="fix" to="fix_input" />
+    <!-- 토픽 리매핑: /ublox/fix -> /ublox/fix_input -->
+    <remap from="~/fix" to="~/fix_input" />
 
     <rosparam command="load"
               file="$(arg param_file_dir)/$(arg param_file_name).yaml" />
