@@ -19,8 +19,6 @@
             polling_timeout: 10.0
         </rosparam>
     </node>
-
-  <arg name="enable_ekf" default="false"/>
   <arg name="config_extras" default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
 
   <!-- Load robot description -->
@@ -55,9 +53,12 @@
   <!-- Override the default control parameters, see config/empty.yaml for default. -->
   <rosparam command="load" file="$(arg config_extras)" subst_value="true" />
 
-  <!-- ===== Faster-LIO Localization (Ouster 32) ===== -->
-  <include file="$(find faster_lio)/launch/mapping_ouster32.launch">
-  </include>
+
+  <!-- ===== Localization (INS 추가해야함) ===== -->
+
+
+
+  
 
   <!-- ===== 포인트 클라우드 처리 파이프라인 ===== -->
   <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" />
