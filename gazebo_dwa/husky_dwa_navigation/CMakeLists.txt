@@ -54,9 +54,9 @@ catkin_install_python(
     scripts/navigation_manager.py
     scripts/path_visualizer.py
     scripts/gps_server.py
-    scripts/initialize_pose.py
+    # scripts/initialize_pose.py
     # scripts/make_frame.py
-    scripts/move_front.py
+    # scripts/move_front.py
     scripts/sync.py
     scripts/waypoints_manager.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -76,8 +76,8 @@ install(
     scripts/navigation_manager.py
     scripts/path_visualizer.py
     scripts/gps_server.py
-    scripts/initialize_pose.py
-    scripts/make_frame.py
+    # scripts/initialize_pose.py
+    # scripts/make_frame.py
     # scripts/move_front.py
     scripts/sync.py
     scripts/waypoints_manager.py

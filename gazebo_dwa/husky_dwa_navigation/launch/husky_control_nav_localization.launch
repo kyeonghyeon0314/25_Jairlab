@@ -130,7 +130,7 @@
   </node>
 
   <!-- ===== RViz 시각화 ===== -->
-  <node name="rviz" pkg="rviz" type="rviz" 
+  <!-- <node name="rviz" pkg="rviz" type="rviz" 
         args="-d $(find faster_lio)/rviz_cfg/loam_livox.rviz" 
-        output="screen" />
+        output="screen" /> -->
 </launch>

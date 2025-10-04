@@ -128,10 +128,7 @@ def start_ros_node():
 
     rospy.init_node(ROS_NODE_NAME, anonymous=True)
 
-    # Static TF Broadcaster 초기화
-    static_tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
-
-    # UTM 원점 정보 Publisher
+    # UTM 원점 정보 Publisher (Static TF는 Global EKF가 담당)
     utm_origin_pub = rospy.Publisher("/utm_origin_info", String, queue_size=1, latch=True)
 
     # GPS 구독 (UTM 원점 설정용)
@@ -147,8 +144,8 @@ def start_ros_node():
 
     rospy.loginfo(f"🚀 ROS 노드 '{ROS_NODE_NAME}' 실행 완료")
     rospy.loginfo("   ✅ GPS 구독: /ublox/fix (UTM 원점 설정)")
-    rospy.loginfo("   ✅ Static TF Broadcaster 준비")
     rospy.loginfo("   ✅ UTM 원점 정보 Publisher 준비")
+    rospy.loginfo("   ⚠️ TF 발행은 Global EKF가 담당 (map → odom)")
 
 # ---------------------------
 # 📌 WebSocket 서버 실행 (GPS 데이터 전송)
@@ -217,7 +214,11 @@ async def start_websocket_server():
 # 📌 WebSocket (웹 → ROS로 Waypoints 전송) - 개선된 GPS 변환
 # ---------------------------
 def gps_to_utm_absolute(lat, lon):
-    """GPS → UTM 절대좌표 변환 (map 프레임용)"""
+    """GPS → UTM 절대좌표 변환 (navsat_transform과 동일한 방식)
+
+    주의: 이 함수는 웹 인터페이스 호환성을 위해 유지됩니다.
+    실제 localization은 navsat_transform → Global EKF 파이프라인을 사용합니다.
+    """
     if utm_origin_absolute is None:
         rospy.logwarn("⚠️ UTM 원점이 설정되지 않음, GPS 변환 불가")
         return None, None
@@ -231,7 +232,9 @@ def gps_to_utm_absolute(lat, lon):
             # 실제 GPS 좌표 처리
             easting, northing, _, _ = utm.from_latlon(lat, lon)
 
-        # UTM 절대좌표 반환 (map 프레임 = UTM 절대좌표계)
+        # UTM 절대좌표 반환
+        # 주의: waypoints_manager는 이 좌표를 사용하여 /waypoint_goal을 발행하며,
+        # 실제 navigation은 Global EKF의 map 프레임 기준으로 수행됩니다.
         return easting, northing
 
     except Exception as e:
@@ -526,9 +529,7 @@ def setup_utm_origin_from_first_gps(gps_msg):
         rospy.loginfo(f"   GPS: ({lat:.6f}, {lon:.6f})")
         rospy.loginfo(f"   UTM: ({easting:.1f}, {northing:.1f})")
         rospy.loginfo(f"   Zone: {utm_zone}")
-
-        # Static TF 발행
-        broadcast_static_map_frame()
+        rospy.loginfo(f"   ⚠️ map→odom TF는 Global EKF가 발행합니다")
 
         # UTM 원점 정보 발행
         publish_utm_origin_info()
@@ -537,20 +538,13 @@ def setup_utm_origin_from_first_gps(gps_msg):
         rospy.logerr(f"❌ UTM 원점 설정 실패: {e}")
 
 def broadcast_static_map_frame():
-    """Static map → odom TF 발행"""
-    global static_tf_broadcaster
+    """[DEPRECATED] Static map → odom TF 발행 (Global EKF가 담당)
 
-    if static_tf_broadcaster is None:
-        return
-
-    t = TransformStamped()
-    t.header.stamp = rospy.Time.now()
-    t.header.frame_id = "map"
-    t.child_frame_id = "odom"
-    t.transform.rotation.w = 1.0
-
-    static_tf_broadcaster.sendTransform(t)
-    rospy.loginfo("📡 Static TF 발행: map → odom")
+    이 함수는 더 이상 사용되지 않습니다.
+    map → odom 변환은 Global EKF (ekf_global)가 동적으로 발행합니다.
+    """
+    rospy.logwarn_once("⚠️ broadcast_static_map_frame()은 deprecated됨 - Global EKF 사용")
+    pass
 
 def publish_utm_origin_info():
     """UTM 원점 정보 ROS 토픽으로 발행"""

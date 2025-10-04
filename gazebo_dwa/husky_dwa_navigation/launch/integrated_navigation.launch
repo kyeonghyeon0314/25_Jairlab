@@ -8,7 +8,7 @@
 
   <!-- 1. 통합 FasterLIO-GPS 융합 위치 추정 시스템 -->
   <!-- UTM 절대좌표 원점 설정 + Heading 보정 + 웹 GPS 발행 -->
-  <node pkg="husky_dwa_navigation" type="initialize_pose.py" name="initialize_pose_node" output="screen"/>
+  <!-- <node pkg="husky_dwa_navigation" type="initialize_pose.py" name="initialize_pose_node" output="screen"/> -->
 
   <!-- 2. 경로 및 웨이포인트 시각화 전용 -->
   <node pkg="husky_dwa_navigation" type="path_visualizer.py" name="path_visualizer_node" output="screen"/>

@@ -23,7 +23,8 @@ class KakaoNavigationSystem:
     def __init__(self):
         rospy.init_node('kakao_navigation_system', anonymous=True)
         
-        # 🎯 UTM Local 원점 관리 (path_visualizer.py와 동기화)
+        # 🎯 UTM 원점 관리 (navsat_transform과 동기화)
+        # 실제 localization: GPS → navsat_transform → Global EKF → map 프레임
         self.utm_origin_absolute = None
         self.utm_zone = None
         self.origin_synced = False
@@ -83,18 +84,22 @@ class KakaoNavigationSystem:
         rospy.Timer(rospy.Duration(5.0), self.publish_web_status)
         
         rospy.loginfo("🚀 카카오 네비게이션 시스템 시작!")
-        rospy.loginfo("🌍 UTM Local 좌표계 기반 자율주행")
-        rospy.loginfo("📡 기존 /waypoints 토픽에서 웨이포인트 수신 대기")
-        rospy.loginfo("🎯 Path Visualizer에서 처리된 웨이포인트로 자율주행!")
+        rospy.loginfo("🌍 UTM 절대좌표계 (map 프레임) 기반 자율주행")
+        rospy.loginfo("📡 /waypoints 토픽에서 웨이포인트 수신 대기")
+        rospy.loginfo("🎯 Localization: GPS → navsat_transform → Global EKF → map 프레임")
         
     def utm_origin_sync_callback(self, msg):
-        """path_visualizer.py에서 설정한 UTM 원점 정보와 동기화"""
+        """GPS Server에서 설정한 UTM 원점 정보와 동기화
+
+        이 원점은 navsat_transform이 사용하는 기준점과 동일합니다.
+        GPS → navsat_transform → /gps/fix/odometry → Global EKF → map 프레임
+        """
         try:
             origin_data = json.loads(msg.data)
-            
+
             if "utm_origin_absolute" in origin_data and not self.origin_synced:
                 utm_origin = origin_data["utm_origin_absolute"]
-                
+
                 self.utm_origin_absolute = {
                     "easting": utm_origin["easting"],
                     "northing": utm_origin["northing"],
@@ -103,22 +108,31 @@ class KakaoNavigationSystem:
                 }
                 self.utm_zone = origin_data.get("utm_zone", "unknown")
                 self.origin_synced = True
-                
-                rospy.loginfo(f"🎯 UTM Local 원점 동기화 완료!")
+
+                rospy.loginfo(f"🎯 UTM 원점 동기화 완료!")
                 rospy.loginfo(f"   Zone: {self.utm_zone}")
-                rospy.loginfo(f"   🎯 로봇 위치 = UTM Local (0, 0)")
-                
+                rospy.loginfo(f"   GPS Origin: ({utm_origin['lat']:.6f}, {utm_origin['lon']:.6f})")
+                rospy.loginfo(f"   UTM Origin: ({utm_origin['easting']:.1f}, {utm_origin['northing']:.1f})")
+                rospy.loginfo(f"   좌표계: Global EKF map 프레임 (UTM 절대좌표)")
+
                 # 대기 중인 웨이포인트가 있으면 처리
                 if self.converted_waypoints_local:
                     rospy.loginfo("🔄 대기 중인 웨이포인트 처리 시작...")
                     if self.current_pose_local:
                         self.start_navigation()
-                        
+
         except Exception as e:
             rospy.logwarn(f"❌ UTM 원점 동기화 실패: {e}")
     
     def waypoints_callback(self, msg):
-        """웹에서 GPS 웨이포인트 수신 및 UTM Local 변환"""
+        """웹에서 GPS 웨이포인트 수신 및 UTM 절대좌표 변환
+
+        변환 흐름:
+        1. 웹 인터페이스 → GPS 좌표 (lat, lon)
+        2. gps_to_utm_absolute() → UTM 절대좌표 (easting, northing)
+        3. /waypoint_goal 발행 → map 프레임 기준
+        4. move_base가 Global EKF의 map 프레임 localization 사용
+        """
         try:
             data = json.loads(msg.data)
             
@@ -288,7 +302,14 @@ class KakaoNavigationSystem:
             rospy.logerr(f"📋 수신된 원본 데이터 (일부): {msg.data[:100]}...")
             
     def gps_to_utm_absolute(self, lat, lon):
-        """GPS → UTM 절대좌표 변환 (map 프레임용)"""
+        """GPS → UTM 절대좌표 변환 (map 프레임용)
+
+        주의: 이 함수는 웹 인터페이스에서 받은 GPS 좌표를 map 프레임으로 변환합니다.
+        실제 로봇 localization은 다음 파이프라인을 사용합니다:
+        GPS (/ublox/fix) → navsat_transform → /gps/fix/odometry → Global EKF → map 프레임
+
+        변환된 좌표는 Global EKF의 map 프레임과 일치하는 UTM 절대좌표입니다.
+        """
         if not self.utm_origin_absolute:
             return 0.0, 0.0
 
@@ -299,7 +320,7 @@ class KakaoNavigationSystem:
         else:
             easting, northing, _, _ = utm.from_latlon(lat, lon)
 
-        # UTM 절대좌표 반환 (map 프레임 = UTM 절대좌표계)
+        # UTM 절대좌표 반환 (Global EKF의 map 프레임과 일치)
         return easting, northing
             
     def publish_waypoints_visualization(self):
@@ -363,9 +384,9 @@ class KakaoNavigationSystem:
         rospy.loginfo(f"✅ 상태 초기화 완료: WP인덱스={self.current_waypoint_index}, 완료={self.completed_waypoints}, 실패={self.failed_waypoints}")
         
         rospy.loginfo("🚀 순차적 웨이포인트 자율주행 시작!")
-        rospy.loginfo(f"   현재 위치: UTM Local ({self.current_pose_local['x']:.2f}, {self.current_pose_local['y']:.2f})")
+        rospy.loginfo(f"   현재 위치: map 프레임 ({self.current_pose_local['x']:.2f}, {self.current_pose_local['y']:.2f})")
         rospy.loginfo(f"   총 웨이포인트: {len(self.converted_waypoints_local)}개 (첫 번째 건너뛰고 {len(self.converted_waypoints_local)-1}개 처리)")
-        rospy.loginfo(f"   좌표계: UTM Local")
+        rospy.loginfo(f"   좌표계: map 프레임 (Global EKF의 UTM 절대좌표)")
         rospy.loginfo(f"   🎯 두 번째 웨이포인트부터 navigation_manager로 순차 전송")
         rospy.loginfo(f"   🔧 navigation_manager가 장애물 회피 및 최적화 담당")
         
@@ -373,21 +394,25 @@ class KakaoNavigationSystem:
         self.send_current_waypoint()
         
     def send_current_waypoint(self):
-        """현재 웨이포인트를 navigation_manager로 순차 전송"""
+        """현재 웨이포인트를 navigation_manager로 순차 전송
+
+        발행되는 goal의 좌표는 Global EKF의 map 프레임 기준입니다.
+        move_base는 /odometry/filtered/global을 사용하여 이 좌표계에서 navigation을 수행합니다.
+        """
         if self.current_waypoint_index >= len(self.converted_waypoints_local):
             rospy.loginfo("🏁 모든 카카오 웨이포인트 완주!")
             self.complete_navigation()
             return
-            
+
         if self.current_goal_sent:
             rospy.loginfo_throttle(10, f"⏳ WP{self.current_waypoint_index + 1} 목표 이미 전송됨. 결과 대기 중...")
             return
-            
+
         current_wp = self.converted_waypoints_local[self.current_waypoint_index]
-        
-        # UTM Local 좌표로 목표점 생성
+
+        # UTM 절대좌표로 목표점 생성 (Global EKF의 map 프레임)
         goal = PoseStamped()
-        goal.header.frame_id = "map"  # UTM 절대좌표계
+        goal.header.frame_id = "map"  # Global EKF map 프레임
         goal.header.stamp = rospy.Time.now()
         
         goal.pose.position.x = float(current_wp["x"])
@@ -592,7 +617,11 @@ class KakaoNavigationSystem:
             self.update_pose_local(msg.pose.pose, "robot_pose")
             
     def update_pose_local(self, pose, source):
-        """UTM Local 위치 정보 업데이트"""
+        """로봇 위치 정보 업데이트 (map 프레임 기준)
+
+        주의: 변수명은 historical한 이유로 'pose_local'이지만,
+        실제로는 Global EKF의 map 프레임 좌표입니다.
+        """
         try:
             self.current_pose_local = {
                 "x": pose.position.x,
