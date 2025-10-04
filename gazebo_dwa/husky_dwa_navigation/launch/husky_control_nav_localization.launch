@@ -3,8 +3,22 @@
   
   <param name="/use_sim_time" value="false" />
 
-  <!-- ===== 로봇 제어, 네비게이션, localization 및 모니터링 담당 ===== -->
-  <!-- 환경 독립적: 시뮬레이션과 실제 환경에서 동일하게 사용 -->
+  <arg name="port" default="$(optenv HUSKY_PORT /dev/ttyUSB0)" />
+
+    <!-- Husky harware driver 실제 테스트때 활성화-->
+    <!-- <node pkg="husky_base" type="husky_node" name="husky_node">
+        <rosparam subst_value="true">
+            port: $(arg port)
+
+            control_frequency: 10.0
+            diagnostic_frequency: 1.0
+
+            max_acceleration: 3.0
+            max_speed: 1.0
+            wheel_diameter: 0.3302
+            polling_timeout: 10.0
+        </rosparam>
+    </node> -->
 
   <arg name="enable_ekf" default="false"/>
   <arg name="config_extras" default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>

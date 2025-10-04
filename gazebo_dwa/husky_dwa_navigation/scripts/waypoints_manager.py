@@ -147,8 +147,8 @@ class KakaoNavigationSystem:
                     return
             
             # 🚨 frame 필터링
-            if "frame" in data and data["frame"] == "utm_local":
-                rospy.loginfo_throttle(5, "⚠️ UTM Local 프레임 데이터 감지 - 무시")
+            if "frame" in data and data["frame"] == "map":
+                rospy.loginfo_throttle(5, "⚠️ Map 프레임 데이터 감지 - 무시")
                 return
             
             rospy.loginfo("📥 웹에서 GPS 웨이포인트 수신됨!")
@@ -211,19 +211,19 @@ class KakaoNavigationSystem:
                         self.converted_waypoints_local.append(local_waypoint)
                     elif "lat" in wp and "lon" in wp:
                         # 원시 GPS 좌표인 경우 변환
-                        local_x, local_y = self.gps_to_utm_local(wp["lat"], wp["lon"])
-                        
+                        utm_x, utm_y = self.gps_to_utm_absolute(wp["lat"], wp["lon"])
+
                         local_waypoint = {
-                            "x": local_x,
-                            "y": local_y,
+                            "x": utm_x,
+                            "y": utm_y,
                             "index": i,
                             "original_gps": {"lat": wp["lat"], "lon": wp["lon"]}
                         }
                         self.converted_waypoints_local.append(local_waypoint)
-                        
+
                         # 로깅 (처음 3개와 마지막 3개만)
                         if i < 3 or i >= len(waypoints_data) - 3:
-                            rospy.loginfo(f"   WP{i+1}: GPS({wp['lat']:.6f}, {wp['lon']:.6f}) → Local({local_x:.1f}, {local_y:.1f})")
+                            rospy.loginfo(f"   WP{i+1}: GPS({wp['lat']:.6f}, {wp['lon']:.6f}) → UTM({utm_x:.1f}, {utm_y:.1f})")
                 
                 self.total_waypoints = len(self.converted_waypoints_local)
                 
@@ -247,13 +247,13 @@ class KakaoNavigationSystem:
                         rospy.loginfo(f"   🎯 목적지: GPS({orig_gps['lat']:.6f}, {orig_gps['lon']:.6f}) → Local({dest['x']:.1f}, {dest['y']:.1f})")
                     elif "lat" in dest and "lon" in dest:
                         # 원시 GPS 좌표인 경우 변환
-                        dest_x, dest_y = self.gps_to_utm_local(dest["lat"], dest["lon"])
+                        dest_x, dest_y = self.gps_to_utm_absolute(dest["lat"], dest["lon"])
                         self.destination_local = {
-                            "x": dest_x, 
-                            "y": dest_y, 
+                            "x": dest_x,
+                            "y": dest_y,
                             "original_gps": dest
                         }
-                        rospy.loginfo(f"   🎯 목적지: GPS({dest['lat']:.6f}, {dest['lon']:.6f}) → Local({dest_x:.1f}, {dest_y:.1f})")
+                        rospy.loginfo(f"   🎯 목적지: GPS({dest['lat']:.6f}, {dest['lon']:.6f}) → UTM({dest_x:.1f}, {dest_y:.1f})")
                     else:
                         self.destination_local = None
                         rospy.loginfo("   🎯 목적지 정보 없음")
@@ -287,31 +287,28 @@ class KakaoNavigationSystem:
             rospy.logerr(f"❌ 웨이포인트 파싱 오류: {e}")
             rospy.logerr(f"📋 수신된 원본 데이터 (일부): {msg.data[:100]}...")
             
-    def gps_to_utm_local(self, lat, lon):
-        """GPS → UTM Local 변환 (상대좌표)"""
+    def gps_to_utm_absolute(self, lat, lon):
+        """GPS → UTM 절대좌표 변환 (map 프레임용)"""
         if not self.utm_origin_absolute:
             return 0.0, 0.0
-            
+
         if abs(lat) < 0.01 and abs(lon) < 0.01:
             # 시뮬레이션 GPS 처리
             easting = lat * 111320.0
             northing = lon * 111320.0
         else:
             easting, northing, _, _ = utm.from_latlon(lat, lon)
-        
-        # UTM Local 상대좌표 계산
-        local_x = easting - self.utm_origin_absolute["easting"]
-        local_y = northing - self.utm_origin_absolute["northing"]
-        
-        return local_x, local_y
+
+        # UTM 절대좌표 반환 (map 프레임 = UTM 절대좌표계)
+        return easting, northing
             
     def publish_waypoints_visualization(self):
-        """변환된 UTM Local 웨이포인트 시각화 발행"""
+        """변환된 UTM 절대좌표 웨이포인트 시각화 발행"""
         if not self.converted_waypoints_local:
             return
-            
+
         waypoints_data = {
-            "frame": "utm_local",
+            "frame": "map",  # UTM 절대좌표계
             "coordinate_type": "kakao_navigation_route",
             "waypoints": [],
             "destination": self.destination_local,
@@ -390,7 +387,7 @@ class KakaoNavigationSystem:
         
         # UTM Local 좌표로 목표점 생성
         goal = PoseStamped()
-        goal.header.frame_id = "utm_local"
+        goal.header.frame_id = "map"  # UTM 절대좌표계
         goal.header.stamp = rospy.Time.now()
         
         goal.pose.position.x = float(current_wp["x"])
@@ -466,7 +463,7 @@ class KakaoNavigationSystem:
             return
             
         goal = PoseStamped()
-        goal.header.frame_id = "utm_local"
+        goal.header.frame_id = "map"  # UTM 절대좌표계
         goal.header.stamp = rospy.Time.now()
         
         goal.pose.position.x = float(self.destination_local["x"])
@@ -568,7 +565,7 @@ class KakaoNavigationSystem:
     def publish_empty_visualization(self):
         """빈 웨이포인트 시각화 발행 (기존 시각화 제거용)"""
         empty_data = {
-            "frame": "utm_local",
+            "frame": "map",  # UTM 절대좌표계
             "coordinate_type": "kakao_navigation_route",
             "waypoints": [],
             "destination": None,

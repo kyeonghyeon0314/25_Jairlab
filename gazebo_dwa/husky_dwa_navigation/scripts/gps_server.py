@@ -11,8 +11,11 @@ import asyncio
 import websockets
 import time
 import utm
+import tf2_ros
 from std_msgs.msg import String
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import NavSatFix
+from geometry_msgs.msg import TransformStamped
 
 # 📌 HTTP & WebSocket 설정
 PORT = 8000
@@ -32,6 +35,8 @@ data_lock = threading.Lock()
 utm_origin_absolute = None
 utm_zone = None
 realtime_gps = None
+static_tf_broadcaster = None  # Static TF broadcaster for map→odom
+utm_origin_pub = None  # UTM 원점 정보 publisher
 system_status = {
     "utm_origin_synced": False,
     "fasterlio_active": False,
@@ -119,17 +124,31 @@ def fasterlio_callback(msg):
 
 def start_ros_node():
     """ ROS 노드 초기화 및 구독 (메인 스레드에서 실행) """
+    global static_tf_broadcaster, utm_origin_pub
+
     rospy.init_node(ROS_NODE_NAME, anonymous=True)
-    
-    # 기존 GPS 토픽 구독
+
+    # Static TF Broadcaster 초기화
+    static_tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
+
+    # UTM 원점 정보 Publisher
+    utm_origin_pub = rospy.Publisher("/utm_origin_info", String, queue_size=1, latch=True)
+
+    # GPS 구독 (UTM 원점 설정용)
+    rospy.Subscriber("/ublox/fix", NavSatFix, gps_subscriber_callback)
+
+    # 기존 GPS 토픽 구독 (웹 인터페이스용)
     rospy.Subscriber(GPS_TOPIC, String, gps_callback)
-    
+
     # 시스템 상태 모니터링 구독
     rospy.Subscriber("/utm_origin_info", String, utm_origin_callback)
     rospy.Subscriber("/navigation/web_status", String, navigation_status_callback)
     rospy.Subscriber("/Odometry", Odometry, fasterlio_callback)  # FasterLIO 활성 상태 확인
-    
+
     rospy.loginfo(f"🚀 ROS 노드 '{ROS_NODE_NAME}' 실행 완료")
+    rospy.loginfo("   ✅ GPS 구독: /ublox/fix (UTM 원점 설정)")
+    rospy.loginfo("   ✅ Static TF Broadcaster 준비")
+    rospy.loginfo("   ✅ UTM 원점 정보 Publisher 준비")
 
 # ---------------------------
 # 📌 WebSocket 서버 실행 (GPS 데이터 전송)
@@ -155,7 +174,7 @@ async def send_gps_data(websocket, path):
                     "utm_zone": utm_zone,
                     "server_info": {
                         "utm_origin_synced": utm_origin_absolute is not None,
-                        "coordinate_system": "utm_local" if utm_origin_absolute else "unknown"
+                        "coordinate_system": "map" if utm_origin_absolute else "unknown"
                     }
                 })
                 gps_data = json.dumps(enhanced_data)
@@ -168,7 +187,7 @@ async def send_gps_data(websocket, path):
                     "utm_zone": utm_zone,
                     "server_info": {
                         "utm_origin_synced": utm_origin_absolute is not None,
-                        "coordinate_system": "utm_local" if utm_origin_absolute else "unknown"
+                        "coordinate_system": "map" if utm_origin_absolute else "unknown"
                     }
                 }
                 gps_data = json.dumps(fallback_data)
@@ -197,12 +216,12 @@ async def start_websocket_server():
 # ---------------------------
 # 📌 WebSocket (웹 → ROS로 Waypoints 전송) - 개선된 GPS 변환
 # ---------------------------
-def gps_to_utm_local(lat, lon):
-    """GPS → UTM Local 변환 (견고성 개선)"""
+def gps_to_utm_absolute(lat, lon):
+    """GPS → UTM 절대좌표 변환 (map 프레임용)"""
     if utm_origin_absolute is None:
         rospy.logwarn("⚠️ UTM 원점이 설정되지 않음, GPS 변환 불가")
         return None, None
-        
+
     try:
         # 시뮬레이션 GPS 처리 (Gazebo 등)
         if abs(lat) < 0.01 and abs(lon) < 0.01:
@@ -211,13 +230,10 @@ def gps_to_utm_local(lat, lon):
         else:
             # 실제 GPS 좌표 처리
             easting, northing, _, _ = utm.from_latlon(lat, lon)
-            
-        # UTM Local 상대좌표 계산
-        local_x = easting - utm_origin_absolute["easting"]
-        local_y = northing - utm_origin_absolute["northing"]
-        
-        return local_x, local_y
-        
+
+        # UTM 절대좌표 반환 (map 프레임 = UTM 절대좌표계)
+        return easting, northing
+
     except Exception as e:
         rospy.logerr(f"❌ GPS 좌표 변환 실패 ({lat}, {lon}): {e}")
         return None, None
@@ -274,27 +290,27 @@ async def receive_waypoints(websocket, path):
                         conversion_errors.append({"index": i, "error": error_detail})
                         continue
                         
-                    # UTM Local 변환
-                    local_x, local_y = gps_to_utm_local(lat, lon)
-                    if local_x is not None and local_y is not None:
+                    # UTM 절대좌표 변환
+                    utm_x, utm_y = gps_to_utm_absolute(lat, lon)
+                    if utm_x is not None and utm_y is not None:
                         converted_wp = {
-                            "x": local_x, 
-                            "y": local_y,
+                            "x": utm_x,
+                            "y": utm_y,
                             "index": i,
                             "original_gps": {"lat": lat, "lon": lon}
                         }
-                        
+
                         # 추가 속성 보존 (속도, 방향, 정지시간 등)
                         for key in ["speed", "heading", "stop_time", "waypoint_type", "description"]:
                             if key in wp:
                                 converted_wp[key] = wp[key]
-                        
+
                         converted_waypoints.append(converted_wp)
-                        
+
                         # 상세 로깅 (처음 3개와 마지막 3개만)
                         total_wps = len(waypoints_data["waypoints"])
                         if i < 3 or i >= total_wps - 3:
-                            rospy.loginfo(f"   WP{i+1}: GPS({lat:.6f}, {lon:.6f}) → Local({local_x:.1f}, {local_y:.1f})")
+                            rospy.loginfo(f"   WP{i+1}: GPS({lat:.6f}, {lon:.6f}) → UTM({utm_x:.1f}, {utm_y:.1f})")
                         elif i == 3 and total_wps > 6:
                             rospy.loginfo(f"   ... (중간 {total_wps-6}개 웨이포인트 생략)")
                     else:
@@ -308,14 +324,14 @@ async def receive_waypoints(websocket, path):
                     if "lat" in dest and "lon" in dest:
                         try:
                             dest_lat, dest_lon = float(dest["lat"]), float(dest["lon"])
-                            dest_x, dest_y = gps_to_utm_local(dest_lat, dest_lon)
+                            dest_x, dest_y = gps_to_utm_absolute(dest_lat, dest_lon)
                             if dest_x is not None and dest_y is not None:
                                 destination_converted = {
-                                    "x": dest_x, 
+                                    "x": dest_x,
                                     "y": dest_y,
                                     "original_gps": {"lat": dest_lat, "lon": dest_lon}
                                 }
-                                rospy.loginfo(f"   🎯 목적지: GPS({dest_lat:.6f}, {dest_lon:.6f}) → Local({dest_x:.1f}, {dest_y:.1f})")
+                                rospy.loginfo(f"   🎯 목적지: GPS({dest_lat:.6f}, {dest_lon:.6f}) → UTM({dest_x:.1f}, {dest_y:.1f})")
                             else:
                                 destination_error = "목적지 UTM 변환 실패"
                         except (ValueError, TypeError):
@@ -330,7 +346,7 @@ async def receive_waypoints(websocket, path):
                 converted_data = {
                     "waypoints": converted_waypoints,
                     "destination": destination_converted,
-                    "coordinate_system": "utm_local",
+                    "coordinate_system": "map",  # UTM 절대좌표계
                     "utm_zone": utm_zone,
                     "conversion_stats": {
                         "total_received": len(waypoints_data["waypoints"]),
@@ -358,7 +374,7 @@ async def receive_waypoints(websocket, path):
                     "destination_converted": destination_converted is not None,
                     "destination_error": destination_error,
                     "utm_zone": utm_zone,
-                    "coordinate_system": "utm_local"
+                    "coordinate_system": "map"  # UTM 절대좌표계
                 }
                 
                 rospy.loginfo(f"✅ 웨이포인트 변환 완료: {len(converted_waypoints)}/{len(waypoints_data['waypoints'])}개")
@@ -473,6 +489,91 @@ def system_info_publisher():
             rospy.logwarn(f"⚠️ 시스템 정보 발행 오류: {e}")
             
         time.sleep(30)  # 30초마다 발행
+
+# ---------------------------
+# 📌 UTM 원점 설정 (GPS 기반 즉시 설정)
+# ---------------------------
+def setup_utm_origin_from_first_gps(gps_msg):
+    """첫 GPS로 즉시 UTM 원점 설정 및 Static TF 발행"""
+    global utm_origin_absolute, utm_zone, system_status
+
+    if utm_origin_absolute is not None:
+        return  # 이미 설정됨
+
+    try:
+        lat, lon = gps_msg.latitude, gps_msg.longitude
+
+        # 시뮬레이션 GPS 처리
+        if abs(lat) < 0.01 and abs(lon) < 0.01:
+            rospy.loginfo("🎮 시뮬레이션 GPS 감지")
+            easting = lat * 111320.0
+            northing = lon * 111320.0
+            zone_num, zone_letter = 52, 'S'
+        else:
+            rospy.loginfo("🌍 실제 GPS 좌표 처리")
+            easting, northing, zone_num, zone_letter = utm.from_latlon(lat, lon)
+
+        utm_origin_absolute = {
+            "easting": easting,
+            "northing": northing,
+            "lat": lat,
+            "lon": lon
+        }
+        utm_zone = f"{zone_num}{zone_letter}"
+        system_status["utm_origin_synced"] = True
+
+        rospy.loginfo("🎯 GPS 기반 UTM 원점 즉시 설정 완료!")
+        rospy.loginfo(f"   GPS: ({lat:.6f}, {lon:.6f})")
+        rospy.loginfo(f"   UTM: ({easting:.1f}, {northing:.1f})")
+        rospy.loginfo(f"   Zone: {utm_zone}")
+
+        # Static TF 발행
+        broadcast_static_map_frame()
+
+        # UTM 원점 정보 발행
+        publish_utm_origin_info()
+
+    except Exception as e:
+        rospy.logerr(f"❌ UTM 원점 설정 실패: {e}")
+
+def broadcast_static_map_frame():
+    """Static map → odom TF 발행"""
+    global static_tf_broadcaster
+
+    if static_tf_broadcaster is None:
+        return
+
+    t = TransformStamped()
+    t.header.stamp = rospy.Time.now()
+    t.header.frame_id = "map"
+    t.child_frame_id = "odom"
+    t.transform.rotation.w = 1.0
+
+    static_tf_broadcaster.sendTransform(t)
+    rospy.loginfo("📡 Static TF 발행: map → odom")
+
+def publish_utm_origin_info():
+    """UTM 원점 정보 ROS 토픽으로 발행"""
+    global utm_origin_pub
+
+    if utm_origin_pub is None or utm_origin_absolute is None:
+        return
+
+    origin_data = {
+        "utm_origin_absolute": utm_origin_absolute,
+        "utm_zone": utm_zone,
+        "timestamp": rospy.Time.now().to_sec(),
+        "source": "gps_server",
+        "coordinate_system": "map"
+    }
+
+    utm_origin_pub.publish(String(data=json.dumps(origin_data)))
+    rospy.loginfo("📡 UTM 원점 정보 발행 완료")
+
+def gps_subscriber_callback(msg):
+    """GPS 구독자 콜백 - UTM 원점 설정용"""
+    if msg.status.status >= 0:  # Valid GPS
+        setup_utm_origin_from_first_gps(msg)
 
 # ---------------------------
 # 📌 메인 실행부

@@ -152,7 +152,7 @@ class PathVisualizer:
             return
         
         marker = self.create_path_marker(
-            self.gps_path, "gps_path", "utm_local",
+            self.gps_path, "gps_path", "map",
             (0.0, 0.0, 1.0), 3.0  # 파란색, 굵게
         )
         self.gps_path_pub.publish(marker)
@@ -163,7 +163,7 @@ class PathVisualizer:
             return
         
         marker = self.create_path_marker(
-            self.corrected_path, "corrected_path", "utm_local",
+            self.corrected_path, "corrected_path", "map",
             (1.0, 0.0, 0.0), 3.0  # 빨간색, 굵게
         )
         self.corrected_path_pub.publish(marker)
@@ -175,7 +175,7 @@ class PathVisualizer:
         
         # 기존 마커 삭제
         delete_marker = Marker()
-        delete_marker.header.frame_id = "utm_local"
+        delete_marker.header.frame_id = "map"
         delete_marker.header.stamp = rospy.Time.now()
         delete_marker.action = Marker.DELETEALL
         marker_array.markers.append(delete_marker)
@@ -208,7 +208,7 @@ class PathVisualizer:
         # 연결선 마커 (궤적)
         if len(valid_points) > 1:
             line_marker = Marker()
-            line_marker.header.frame_id = "utm_local"
+            line_marker.header.frame_id = "map"
             line_marker.header.stamp = rospy.Time.now()
             line_marker.ns = "waypoints_path"
             line_marker.id = 0
@@ -229,7 +229,7 @@ class PathVisualizer:
         for wp_index, (original_index, x, y, wp_data) in enumerate(valid_waypoints):
             # 웨이포인트 큐브
             cube = Marker()
-            cube.header.frame_id = "utm_local"
+            cube.header.frame_id = "map"
             cube.header.stamp = rospy.Time.now()
             cube.ns = "waypoints_cubes"
             cube.id = wp_index + 1
@@ -272,7 +272,7 @@ class PathVisualizer:
             
             # 웨이포인트 번호 텍스트
             text = Marker()
-            text.header.frame_id = "utm_local"
+            text.header.frame_id = "map"
             text.header.stamp = rospy.Time.now()
             text.ns = "waypoints_text"
             text.id = wp_index
