@@ -1,0 +1,26 @@
+digraph G {
+"map" -> "odom"[label=" Broadcaster: /gps_server_node\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "base_footprint"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"odom" -> "base_link"[label=" Broadcaster: /initialize_pose_node\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 1759551644.584\nOldest transform: 1759551639.684\n"];
+"base_link" -> "front_bumper_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"base_link" -> "imu_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"base_link" -> "inertial_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"base_link" -> "rear_bumper_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"base_link" -> "top_chassis_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"top_plate_link" -> "top_plate_front_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"base_link" -> "top_plate_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"top_plate_link" -> "top_plate_rear_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"base_link" -> "user_rail_link"[label=" Broadcaster: /robot_state_publisher\nAverage rate: 50.204\nBuffer length: 4.98\nMost recent transform: 1759551645.103\nOldest transform: 1759551640.123\n"];
+"camera_init" -> "body"[label=" Broadcaster: /laserMapping\nAverage rate: 10.2\nBuffer length: 4.902\nMost recent transform: 1759551644.531\nOldest transform: 1759551639.629\n"];
+"base_link" -> "os_sensor"[label=" Broadcaster: /initialize_pose_node\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 1759551644.584\nOldest transform: 1759551639.684\n"];
+"os_sensor" -> "os1_lidar"[label=" Broadcaster: /initialize_pose_node\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 1759551644.584\nOldest transform: 1759551639.684\n"];
+"os_sensor" -> "os1_imu"[label=" Broadcaster: /initialize_pose_node\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 1759551644.584\nOldest transform: 1759551639.684\n"];
+"base_link" -> "front_left_wheel_link"[label=" Broadcaster: /initialize_pose_node\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 1759551644.584\nOldest transform: 1759551639.684\n"];
+"base_link" -> "front_right_wheel_link"[label=" Broadcaster: /initialize_pose_node\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 1759551644.584\nOldest transform: 1759551639.684\n"];
+"base_link" -> "rear_left_wheel_link"[label=" Broadcaster: /initialize_pose_node\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 1759551644.584\nOldest transform: 1759551639.684\n"];
+"base_link" -> "rear_right_wheel_link"[label=" Broadcaster: /initialize_pose_node\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 1759551644.584\nOldest transform: 1759551639.684\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1759551644.6310287"[ shape=plaintext ] ;
+}->"camera_init";
+}

@@ -17,23 +17,14 @@ class PoseInitializer:
     def __init__(self):
         rospy.init_node('initialize_pose_node', anonymous=True)
 
-        # 🌟 개선된 UTM 좌표계 관리 (여러 GPS 기반)
-        self.utm_origin_absolute = None
+        # 🌟 UTM 절대좌표 원점 관리 (Kakao Map 연동용)
+        self.utm_origin_absolute = None  # 실제 UTM 절대 좌표 저장
         self.utm_zone = None
         self.origin_synced = False
-        
-        # 🎯 GPS 신뢰도 기반 원점 설정 시스템
-        self.gps_candidates = []  # GPS 후보들 저장
-        
-        # 🔧 GPS 정확도 설정 (수동 조정 가능)
-        # ⚡ 빠른 설정: duration=2.0, samples=20, threshold=0.5 
-        # ⚖️ 균형 설정: duration=3.0, samples=40, threshold=0.4
-        # 🎯 정밀 설정: duration=5.0, samples=80, threshold=0.3
-        self.gps_collection_duration = 3.0  # GPS 수집 시간 (초) - 균형 설정
-        self.gps_collection_start_time = None
-        self.min_gps_samples = 40           # 최소 GPS 샘플 수 (20Hz * 2초 = 40개)
-        self.gps_quality_threshold = 0.4    # GPS 품질 임계값 (미터) - 40cm
-        
+
+        # 웹 인터페이스용 실시간 GPS 데이터
+        self.current_gps = None
+
         # FasterLIO 관리
         self.fasterlio_origin = None
         self.current_body_pose = None
@@ -83,7 +74,8 @@ class PoseInitializer:
         self.pose_pub = rospy.Publisher("/robot_pose", PoseWithCovarianceStamped, queue_size=1)
         self.odom_pub = rospy.Publisher("/fused_odom", Odometry, queue_size=1)
         self.uncertainty_pub = rospy.Publisher("/pose_uncertainty", Marker, queue_size=10)
-        self.utm_origin_pub = rospy.Publisher("/utm_origin_info", String, queue_size=1)
+        self.utm_origin_pub = rospy.Publisher("/utm_origin_info", String, queue_size=1, latch=True)
+        self.gps_data_pub = rospy.Publisher("/gps_data", String, queue_size=10)  # 웹 전송용
         
         # TF broadcaster
         self.tf_broadcaster = tf2_ros.TransformBroadcaster()
@@ -99,15 +91,17 @@ class PoseInitializer:
         rospy.Timer(rospy.Duration(0.1), self.broadcast_dynamic_tf)
         rospy.Timer(rospy.Duration(0.5), self.publish_uncertainty)
         rospy.Timer(rospy.Duration(1.0), self.check_move_front_pattern)
+        rospy.Timer(rospy.Duration(1.0), self.publish_gps_data)  # 웹용 GPS 데이터
         # ❌ 점진적 보정 타이머 제거됨 - move_front 기반 1회 보정만 사용
 
-        rospy.loginfo("🚀 PoseInitializer 시작 - 개선된 FasterLIO-GPS 융합 위치 추정")
-        rospy.loginfo("   ✅ 신뢰도 기반 GPS 원점 설정")
-        rospy.loginfo("   ✅ move_front 패턴 기반 헤딩 보정 (1회만)")
-        rospy.loginfo("   ❌ 점진적 헤딩 보정 비활성화")
+        rospy.loginfo("🚀 PoseInitializer 시작 - FasterLIO-GPS 융합 위치 추정")
+        rospy.loginfo("   ⏳ UTM 원점 대기 (gps_server에서 설정)")
+        rospy.loginfo("   ✅ move_front 패턴 기반 정밀 헤딩 보정")
+        rospy.loginfo("   ✅ 웹 인터페이스용 GPS 데이터 발행")
+        rospy.loginfo("   ✅ TF 구조: map → odom → base_link")
         rospy.loginfo(f"   🚗 설정된 move_front 타이밍:")
         rospy.loginfo(f"      가속: {self.MOVE_FRONT_TIMING['acceleration']}초")
-        rospy.loginfo(f"      등속: {self.MOVE_FRONT_TIMING['constant']}초") 
+        rospy.loginfo(f"      등속: {self.MOVE_FRONT_TIMING['constant']}초")
         rospy.loginfo(f"      감속: {self.MOVE_FRONT_TIMING['deceleration']}초")
         rospy.loginfo(f"      총 시간: {sum(self.MOVE_FRONT_TIMING.values())}초")
         rospy.logwarn("⚠️  move_front.py 파라미터 변경 시 위 값들도 수동 수정 필요!")
@@ -141,170 +135,6 @@ class PoseInitializer:
             return "deceleration"
         else:
             return "completed"
-
-    def collect_gps_candidates(self, gps_msg):
-        """🌟 GPS 후보 수집 및 신뢰도 평가 (움직일 때만)"""
-        if gps_msg.status.status < 0:
-            return False
-        
-        # 🚀 개선: 움직일 때만 GPS 후보 수집
-        if not self.motion_detector["is_moving"]:
-            return False
-            
-        if self.gps_collection_start_time is None:
-            self.gps_collection_start_time = rospy.Time.now()
-            rospy.loginfo("🔄 GPS 후보 수집 시작 (움직임 감지 후 신뢰도 기반 원점 설정)")
-        
-        # GPS 품질 평가 메트릭
-        quality_score = self.evaluate_gps_quality(gps_msg)
-        
-        candidate = {
-            "lat": gps_msg.latitude,
-            "lon": gps_msg.longitude,
-            "quality": quality_score,
-            "hdop": getattr(gps_msg.position_covariance, 'hdop', 1.0) if hasattr(gps_msg, 'position_covariance') else 1.0,
-            "timestamp": gps_msg.header.stamp.to_sec(),
-            "status": gps_msg.status.status
-        }
-        
-        self.gps_candidates.append(candidate)
-        
-        # 수집 완료 조건 확인
-        elapsed_time = (rospy.Time.now() - self.gps_collection_start_time).to_sec()
-        
-        if (len(self.gps_candidates) >= self.min_gps_samples and 
-            elapsed_time >= self.gps_collection_duration):
-            
-            return self.finalize_utm_origin()
-            
-        rospy.loginfo_throttle(1, f"📡 GPS 후보 수집 중: {len(self.gps_candidates)}개 수집됨")
-        return False
-    
-    def evaluate_gps_quality(self, gps_msg):
-        """GPS 품질 평가 (높을수록 좋음)"""
-        # 기본 점수
-        base_score = 1.0
-        
-        # GPS 상태별 점수 조정
-        if gps_msg.status.status == 2:  # RTK Fixed
-            base_score = 10.0
-        elif gps_msg.status.status == 1:  # RTK Float  
-            base_score = 5.0
-        elif gps_msg.status.status == 0:  # Standard GPS
-            base_score = 2.0
-        
-        # Position covariance가 있다면 추가 평가
-        if hasattr(gps_msg, 'position_covariance') and len(gps_msg.position_covariance) >= 9:
-            cov_xx = gps_msg.position_covariance[0]
-            cov_yy = gps_msg.position_covariance[4]
-            position_uncertainty = math.sqrt(cov_xx + cov_yy)
-            
-            # 불확실성이 낮을수록 높은 점수
-            uncertainty_factor = max(0.1, 1.0 / (1.0 + position_uncertainty))
-            base_score *= uncertainty_factor
-        
-        return base_score
-    
-    def finalize_utm_origin(self):
-        """🎯 최적 GPS 후보 선택 및 UTM 원점 설정"""
-        if not self.gps_candidates:
-            rospy.logwarn("❌ GPS 후보가 없어 원점 설정 실패")
-            return False
-        
-        # 품질 순으로 정렬
-        sorted_candidates = sorted(self.gps_candidates, key=lambda x: x['quality'], reverse=True)
-        
-        # 상위 후보들의 클러스터링 기반 평균 계산
-        best_candidates = self.select_best_cluster(sorted_candidates)
-        
-        if not best_candidates:
-            rospy.logwarn("❌ 신뢰할 만한 GPS 클러스터를 찾을 수 없음")
-            return False
-        
-        # 가중 평균 계산
-        total_weight = sum(candidate['quality'] for candidate in best_candidates)
-        weighted_lat = sum(c['lat'] * c['quality'] for c in best_candidates) / total_weight
-        weighted_lon = sum(c['lon'] * c['quality'] for c in best_candidates) / total_weight
-        
-        # 표준편차 계산
-        lat_std = math.sqrt(sum((c['lat'] - weighted_lat)**2 for c in best_candidates) / len(best_candidates))
-        lon_std = math.sqrt(sum((c['lon'] - weighted_lon)**2 for c in best_candidates) / len(best_candidates))
-        
-        rospy.loginfo("🎯 신뢰도 기반 UTM 원점 설정!")
-        rospy.loginfo(f"   📊 분석된 GPS 후보: {len(self.gps_candidates)}개")
-        rospy.loginfo(f"   🏆 선택된 클러스터: {len(best_candidates)}개")
-        rospy.loginfo(f"   📍 최종 좌표: ({weighted_lat:.8f}, {weighted_lon:.8f})")
-        rospy.loginfo(f"   📏 표준편차: lat={lat_std*111320:.2f}m, lon={lon_std*111320:.2f}m")
-        
-        return self.set_utm_origin(weighted_lat, weighted_lon)
-    
-    def select_best_cluster(self, sorted_candidates):
-        """GPS 후보들을 클러스터링하여 최적 그룹 선택"""
-        if not sorted_candidates:
-            return []
-        
-        # 최고 품질 후보를 기준으로 클러스터링
-        reference = sorted_candidates[0]
-        cluster = [reference]
-        
-        for candidate in sorted_candidates[1:]:
-            # 거리 계산 (미터 단위)
-            lat_dist = (candidate['lat'] - reference['lat']) * 111320
-            lon_dist = (candidate['lon'] - reference['lon']) * 111320
-            distance = math.sqrt(lat_dist**2 + lon_dist**2)
-            
-            # 임계값 내에 있는 후보만 클러스터에 포함
-            if distance <= self.gps_quality_threshold:
-                cluster.append(candidate)
-        
-        # 최소 절반 이상의 후보가 클러스터에 포함되어야 신뢰성 인정
-        min_cluster_size = max(3, len(sorted_candidates) // 3)
-        
-        if len(cluster) >= min_cluster_size:
-            return cluster
-        else:
-            # 클러스터가 너무 작으면 상위 30% 후보만 사용
-            top_30_percent = max(3, len(sorted_candidates) * 3 // 10)
-            return sorted_candidates[:top_30_percent]
-
-    def set_utm_origin(self, lat, lon):
-        """첫 번째 GPS 위치를 UTM 원점으로 설정"""
-        try:
-            if abs(lat) < 0.01 and abs(lon) < 0.01:
-                # 시뮬레이션 GPS 처리
-                easting = lat * 111320.0
-                northing = lon * 111320.0
-                utm_zone = "simulation"
-            else:
-                easting, northing, zone_number, zone_letter = utm.from_latlon(lat, lon)
-                utm_zone = f"{zone_number}{zone_letter}"
-            
-            self.utm_origin_absolute = {
-                "easting": easting,
-                "northing": northing,
-                "lat": lat,
-                "lon": lon
-            }
-            self.utm_zone = utm_zone
-            self.origin_synced = True
-            
-            # UTM 원점 정보 발행
-            origin_data = {
-                "utm_origin_absolute": self.utm_origin_absolute,
-                "utm_zone": utm_zone,
-                "timestamp": rospy.Time.now().to_sec()
-            }
-            
-            self.utm_origin_pub.publish(String(data=json.dumps(origin_data)))
-            
-            rospy.loginfo(f"🎯 UTM 원점 설정 완료!")
-            rospy.loginfo(f"   GPS: ({lat:.6f}, {lon:.6f})")
-            rospy.loginfo(f"   UTM: ({easting:.1f}, {northing:.1f})")
-            rospy.loginfo(f"   Zone: {utm_zone}")
-            rospy.loginfo(f"   로봇 위치 = UTM Local (0, 0)")
-            
-        except Exception as e:
-            rospy.logerr(f"❌ UTM 원점 설정 실패: {e}")
 
     def utm_origin_callback(self, msg):
         """UTM 원점 정보 동기화"""
@@ -381,47 +211,57 @@ class PoseInitializer:
             self.correction_system["move_front_detected"] = False
 
     def gps_callback(self, msg):
-        """개선된 GPS 콜백 - 신뢰도 기반 원점 설정 (움직일 때만)"""
+        """GPS 콜백 - 궤적 기록만 (원점 설정은 gps_server 담당)"""
         if msg.status.status < 0:
             return
-            
-        # UTM 원점이 설정되지 않았다면 GPS 후보 수집
+
+        # 🌐 웹 인터페이스용 실시간 GPS 데이터 업데이트
+        self.current_gps = {
+            "latitude": msg.latitude,
+            "longitude": msg.longitude,
+            "altitude": msg.altitude,
+            "status": msg.status.status
+        }
+
+        # UTM 원점 대기
         if not self.origin_synced:
-            if self.collect_gps_candidates(msg):
-                rospy.loginfo("✅ GPS 기반 UTM 원점 설정 완료!")
+            rospy.loginfo_throttle(10, "⏳ UTM 원점 대기 중 (gps_server에서 설정 필요)")
             return
-        
-        # 🚀 개선: 움직일 때만 GPS 궤적 처리
+
+        # 🚀 움직일 때만 GPS 궤적 처리
         if not self.motion_detector["is_moving"]:
             return
-        
+
         timestamp = msg.header.stamp.to_sec()
-        gps_local_x, gps_local_y = self.gps_to_utm_local(msg.latitude, msg.longitude)
-        
+        gps_utm_x, gps_utm_y = self.gps_to_utm_absolute(msg.latitude, msg.longitude)
+
+        # UTM 원점 기준 상대좌표 계산 (내부 처리용)
+        gps_local_x = gps_utm_x - self.utm_origin_absolute["easting"]
+        gps_local_y = gps_utm_y - self.utm_origin_absolute["northing"]
+
         self.last_good_gps = {
             "x": gps_local_x,
             "y": gps_local_y,
             "timestamp": timestamp,
             "lat": msg.latitude,
-            "lon": msg.longitude
+            "lon": msg.longitude,
+            "status": msg.status.status  # GPS 품질 정보 저장
         }
-        
+
         # GPS 궤적 기록
         if not self.gps_trajectory_local or self.distance_check_local(self.last_good_gps, self.gps_trajectory_local[-1], 0.3):
             self.gps_trajectory_local.append(self.last_good_gps.copy())
-            rospy.loginfo_throttle(5, f"📡 GPS 궤적 업데이트: ({gps_local_x:.1f}, {gps_local_y:.1f})")
+            rospy.loginfo_throttle(5, f"📡 GPS 궤적 업데이트: UTM({gps_utm_x:.1f}, {gps_utm_y:.1f}) Local({gps_local_x:.1f}, {gps_local_y:.1f}) 품질={msg.status.status}")
 
-    def gps_to_utm_local(self, lat, lon):
-        """GPS → UTM Local 변환"""
+    def gps_to_utm_absolute(self, lat, lon):
+        """GPS → UTM 절대좌표 변환"""
         if abs(lat) < 0.01 and abs(lon) < 0.01:
             easting = lat * 111320.0
             northing = lon * 111320.0
         else:
             easting, northing, _, _ = utm.from_latlon(lat, lon)
-        
-        local_x = easting - self.utm_origin_absolute["easting"]
-        local_y = northing - self.utm_origin_absolute["northing"]
-        return local_x, local_y
+
+        return easting, northing
 
     def process_trajectories(self):
         """궤적 처리 및 초기 정렬"""
@@ -563,68 +403,72 @@ class PoseInitializer:
         return self.quaternion_from_euler(roll, pitch, corrected_yaw)
 
     def publish_current_pose(self, _):
-        """현재 위치 발행"""
-        if self.current_pose_local is None:
+        """현재 위치 발행 (UTM 절대좌표)"""
+        if self.current_pose_local is None or not self.origin_synced:
             return
-        
+
         current_time = rospy.Time.now()
-        
+
+        # UTM 절대 좌표 계산
+        utm_abs_x = self.utm_origin_absolute["easting"] + self.current_pose_local["x"]
+        utm_abs_y = self.utm_origin_absolute["northing"] + self.current_pose_local["y"]
+
         # PoseWithCovarianceStamped 발행
         pose_msg = PoseWithCovarianceStamped()
         pose_msg.header.stamp = current_time
-        pose_msg.header.frame_id = "utm_local"
-        
-        pose_msg.pose.pose.position.x = self.current_pose_local["x"]
-        pose_msg.pose.pose.position.y = self.current_pose_local["y"]
+        pose_msg.header.frame_id = "map"  # UTM 절대좌표계
+
+        pose_msg.pose.pose.position.x = utm_abs_x
+        pose_msg.pose.pose.position.y = utm_abs_y
         pose_msg.pose.pose.position.z = self.current_pose_local["z"]
         pose_msg.pose.pose.orientation.x = self.current_pose_local["qx"]
         pose_msg.pose.pose.orientation.y = self.current_pose_local["qy"]
         pose_msg.pose.pose.orientation.z = self.current_pose_local["qz"]
         pose_msg.pose.pose.orientation.w = self.current_pose_local["qw"]
         pose_msg.pose.covariance = self.pose_covariance.flatten().tolist()
-        
+
         self.pose_pub.publish(pose_msg)
-        
+
         # Odometry 발행
         odom_msg = Odometry()
         odom_msg.header.stamp = current_time
-        odom_msg.header.frame_id = "utm_local"
+        odom_msg.header.frame_id = "map"  # UTM 절대좌표계
         odom_msg.child_frame_id = "base_link"
         odom_msg.pose = pose_msg.pose
-        
+
         self.odom_pub.publish(odom_msg)
 
     def broadcast_dynamic_tf(self, _):
-        """🔥 완전한 TF tree 구성"""
-        if self.current_pose_local is None:
+        """🔥 TF tree 구성: odom → base_link → sensors (map→odom은 gps_server가 담당)"""
+        if not self.origin_synced:
+            rospy.loginfo_throttle(10, "⏳ TF 발행 대기: UTM 원점 미설정")
             return
-        
+
+        if self.current_pose_local is None:
+            rospy.loginfo_throttle(10, "⏳ TF 발행 대기: FasterLIO 데이터 미수신")
+            return
+
         current_time = rospy.Time.now()
         transforms = []
-        
-        # 1. utm_local → odom (메인 변환)
-        utm_to_odom = TransformStamped()
-        utm_to_odom.header.stamp = current_time
-        utm_to_odom.header.frame_id = "utm_local"
-        utm_to_odom.child_frame_id = "odom"
-        utm_to_odom.transform.translation.x = self.current_pose_local["x"]
-        utm_to_odom.transform.translation.y = self.current_pose_local["y"]
-        utm_to_odom.transform.translation.z = self.current_pose_local["z"]
-        utm_to_odom.transform.rotation.x = self.current_pose_local["qx"]
-        utm_to_odom.transform.rotation.y = self.current_pose_local["qy"]
-        utm_to_odom.transform.rotation.z = self.current_pose_local["qz"]
-        utm_to_odom.transform.rotation.w = self.current_pose_local["qw"]
-        transforms.append(utm_to_odom)
-        
-        # 2. odom → base_link
+
+        # ❌ map → odom 제거: gps_server에서 Static TF로 발행
+
+        # 1. odom → base_link (Dynamic, 로봇의 UTM 절대 위치)
         odom_to_base = TransformStamped()
         odom_to_base.header.stamp = current_time
         odom_to_base.header.frame_id = "odom"
         odom_to_base.child_frame_id = "base_link"
-        odom_to_base.transform.rotation.w = 1.0
+        # UTM 절대 좌표 = 원점 + 보정된 상대 위치
+        odom_to_base.transform.translation.x = self.utm_origin_absolute["easting"] + self.current_pose_local["x"]
+        odom_to_base.transform.translation.y = self.utm_origin_absolute["northing"] + self.current_pose_local["y"]
+        odom_to_base.transform.translation.z = self.current_pose_local["z"]
+        odom_to_base.transform.rotation.x = self.current_pose_local["qx"]
+        odom_to_base.transform.rotation.y = self.current_pose_local["qy"]
+        odom_to_base.transform.rotation.z = self.current_pose_local["qz"]
+        odom_to_base.transform.rotation.w = self.current_pose_local["qw"]
         transforms.append(odom_to_base)
-        
-        # 3. base_link → 센서 프레임들
+
+        # 2. base_link → 센서 프레임들
         # base_link → os_sensor
         base_to_os_sensor = TransformStamped()
         base_to_os_sensor.header.stamp = current_time
@@ -649,8 +493,8 @@ class PoseInitializer:
         os_sensor_to_imu.child_frame_id = "os1_imu"
         os_sensor_to_imu.transform.rotation.w = 1.0
         transforms.append(os_sensor_to_imu)
-        
-        # 4. base_link → 휠 프레임들
+
+        # 3. base_link → 휠 프레임들
         wheel_positions = {
             "front_left_wheel_link": [0.256, 0.2854, 0.0],
             "front_right_wheel_link": [0.256, -0.2854, 0.0],
@@ -674,36 +518,55 @@ class PoseInitializer:
 
     def publish_uncertainty(self, _):
         """위치 불확실성 시각화"""
-        if self.current_pose_local is None:
+        if self.current_pose_local is None or not self.origin_synced:
             return
-        
+
         uncertainty = math.sqrt(self.pose_covariance[0,0])
-        
+
+        # UTM 절대 좌표 계산
+        utm_abs_x = self.utm_origin_absolute["easting"] + self.current_pose_local["x"]
+        utm_abs_y = self.utm_origin_absolute["northing"] + self.current_pose_local["y"]
+
         marker = Marker()
-        marker.header.frame_id = "utm_local"
+        marker.header.frame_id = "map"  # UTM 절대좌표계
         marker.header.stamp = rospy.Time.now()
         marker.ns = "pose_uncertainty"
         marker.id = 0
         marker.type = Marker.CYLINDER
         marker.action = Marker.ADD
-        
-        marker.pose.position.x = self.current_pose_local["x"]
-        marker.pose.position.y = self.current_pose_local["y"]
+
+        marker.pose.position.x = utm_abs_x
+        marker.pose.position.y = utm_abs_y
         marker.pose.position.z = 0.0
         marker.pose.orientation.w = 1.0
-        
+
         marker.scale.x = uncertainty * 2.0
         marker.scale.y = uncertainty * 2.0
         marker.scale.z = 0.1
-        
+
         # 정렬 상태에 따른 색상
         if self.correction_system["initial_alignment_done"]:
             marker.color.r, marker.color.g, marker.color.b = 0.0, 1.0, 0.0  # 녹색
         else:
             marker.color.r, marker.color.g, marker.color.b = 1.0, 1.0, 0.0  # 노란색
-        
+
         marker.color.a = 0.3
         self.uncertainty_pub.publish(marker)
+
+    def publish_gps_data(self, _):
+        """실시간 GPS 데이터 발행 (웹 인터페이스용)"""
+        if self.current_gps:
+            self.gps_data_pub.publish(json.dumps(self.current_gps))
+            rospy.loginfo_throttle(10, f"📡 실시간 GPS → 웹: ({self.current_gps['latitude']:.6f}, {self.current_gps['longitude']:.6f})")
+        elif self.utm_origin_absolute:
+            # GPS가 없으면 원점 정보라도 전송
+            fallback_gps = {
+                "latitude": self.utm_origin_absolute["lat"],
+                "longitude": self.utm_origin_absolute["lon"],
+                "altitude": 0.0
+            }
+            self.gps_data_pub.publish(json.dumps(fallback_gps))
+            rospy.loginfo_throttle(20, f"📡 Fallback GPS → 웹: ({fallback_gps['latitude']:.6f}, {fallback_gps['longitude']:.6f})")
 
     # 유틸리티 함수들
     def calculate_trajectory_heading(self, trajectory):
@@ -798,62 +661,71 @@ class PoseInitializer:
         # else: 정지 상태 유지
     
     def perform_move_front_final_correction(self):
-        """🚗 move_front 완료 후 최종 헤딩 보정"""
+        """🚗 move_front 완료 후 최종 헤딩 보정 (정밀 버전)"""
         if self.correction_system["initial_alignment_done"]:
             rospy.loginfo("✅ 이미 헤딩 보정 완료됨 - move_front 보정 무시")
             return
-            
+
         # move_front 시작 이후의 궤적 데이터 필터링
         if self.correction_system["move_front_start_time"] is None:
             rospy.logwarn("❌ move_front 시작 시간 누락 - 헤딩 보정 실패")
             rospy.logwarn("   move_front 패턴을 먼저 실행해야 합니다!")
             return
-            
+
         move_start_time = self.correction_system["move_front_start_time"].to_sec()
-        
+
         # move_front 시작 이후의 FasterLIO 궤적 필터링
-        move_fasterlio = [p for p in self.fasterlio_trajectory_local 
+        move_fasterlio = [p for p in self.fasterlio_trajectory_local
                          if p["timestamp"] >= move_start_time]
-        
-        # move_front 시작 이후의 GPS 궤적 필터링  
-        move_gps = [p for p in self.gps_trajectory_local 
-                   if p["timestamp"] >= move_start_time]
-        
-        if len(move_fasterlio) < 5 or len(move_gps) < 5:
-            rospy.logwarn(f"❌ move_front 데이터 부족: FLio={len(move_fasterlio)}, GPS={len(move_gps)}")
+
+        # move_front 시작 이후의 GPS 궤적 필터링 (고품질만)
+        MIN_GPS_QUALITY = 1  # RTK Float (1) 이상
+        move_gps = [p for p in self.gps_trajectory_local
+                   if p["timestamp"] >= move_start_time and p.get("status", 0) >= MIN_GPS_QUALITY]
+
+        if len(move_fasterlio) < 10 or len(move_gps) < 10:
+            rospy.logwarn(f"❌ move_front 데이터 부족: FLio={len(move_fasterlio)}, GPS(고품질)={len(move_gps)}")
             rospy.logwarn("   더 긴 move_front 패턴이 필요합니다!")
             return
-            
+
         # 시작점과 끝점으로 전체 방향 계산 (충분한 샘플 확보)
         flio_start, flio_end = move_fasterlio[0], move_fasterlio[-1]
         gps_start, gps_end = move_gps[0], move_gps[-1]
-        
-        total_flio_distance = math.sqrt((flio_end["x"] - flio_start["x"])**2 + 
+
+        total_flio_distance = math.sqrt((flio_end["x"] - flio_start["x"])**2 +
                                        (flio_end["y"] - flio_start["y"])**2)
-        total_gps_distance = math.sqrt((gps_end["x"] - gps_start["x"])**2 + 
+        total_gps_distance = math.sqrt((gps_end["x"] - gps_start["x"])**2 +
                                       (gps_end["y"] - gps_start["y"])**2)
-        
-        if total_flio_distance < 3.0 or total_gps_distance < 3.0:
-            rospy.logwarn(f"⚠️ move_front 이동거리 부족: FLio={total_flio_distance:.1f}m, GPS={total_gps_distance:.1f}m")
+
+        # 정밀도 향상: 최소 5m 이동 요구
+        MIN_CALIBRATION_DISTANCE = 5.0
+        if total_flio_distance < MIN_CALIBRATION_DISTANCE or total_gps_distance < MIN_CALIBRATION_DISTANCE:
+            rospy.logwarn(f"⚠️ move_front 이동거리 부족 (최소 {MIN_CALIBRATION_DISTANCE}m 필요)")
+            rospy.logwarn(f"   현재: FLio={total_flio_distance:.1f}m, GPS={total_gps_distance:.1f}m")
             return
-        
+
+        # GPS 품질 추가 검증
+        avg_gps_quality = sum(p.get("status", 0) for p in move_gps) / len(move_gps)
+        rospy.loginfo(f"📡 GPS 품질: 평균 상태={avg_gps_quality:.2f}, 샘플 수={len(move_gps)}")
+
         # 정밀 헤딩 계산
-        fasterlio_heading = math.atan2(flio_end["y"] - flio_start["y"], 
+        fasterlio_heading = math.atan2(flio_end["y"] - flio_start["y"],
                                       flio_end["x"] - flio_start["x"])
-        gps_heading = math.atan2(gps_end["y"] - gps_start["y"], 
+        gps_heading = math.atan2(gps_end["y"] - gps_start["y"],
                                 gps_end["x"] - gps_start["x"])
-        
+
         angle_diff = self.normalize_angle(gps_heading - fasterlio_heading)
         self.correction_system["heading_correction"] = angle_diff
         self.correction_system["initial_alignment_done"] = True
-        
-        rospy.loginfo("🏆 move_front 완료 기반 최종 헤딩 보정 완료!")
+
+        rospy.loginfo("🏆 move_front 완료 기반 정밀 헤딩 보정 완료!")
         rospy.loginfo(f"   전체 이동거리: FLio={total_flio_distance:.1f}m, GPS={total_gps_distance:.1f}m")
-        rospy.loginfo(f"   사용된 샘플: FLio={len(move_fasterlio)}개, GPS={len(move_gps)}개")
+        rospy.loginfo(f"   사용된 샘플: FLio={len(move_fasterlio)}개, GPS(고품질)={len(move_gps)}개")
+        rospy.loginfo(f"   평균 GPS 품질: {avg_gps_quality:.2f}")
         rospy.loginfo(f"   FasterLIO 방향: {math.degrees(fasterlio_heading):.2f}도")
         rospy.loginfo(f"   GPS 방향: {math.degrees(gps_heading):.2f}도")
         rospy.loginfo(f"   최종 보정값: {math.degrees(angle_diff):.2f}도")
-        
+
         self.recalculate_all_trajectories()
 
     def run(self):

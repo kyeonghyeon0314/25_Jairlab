@@ -29,7 +29,7 @@ DWAPlannerROS:
   # ==========================================================================
   publish_traj_pc: true        # 궤적 포인트 클라우드 발행 - RViz에서 후보 궤적들 확인 가능
   publish_cost_grid_pc: true   # 비용 그리드 발행 - 각 궤적의 비용 시각화
-  global_frame_id: utm_local        # 전역 프레임 ID - 좌표계 설정
+  global_frame_id: map         # 전역 프레임 ID - 좌표계 설정
 
 # =============================================================================
 # Move Base 일반 설정 (25_Jairlab path_planning_params.yaml 기반)
