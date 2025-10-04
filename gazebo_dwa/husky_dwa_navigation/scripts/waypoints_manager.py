@@ -64,11 +64,9 @@ class KakaoNavigationSystem:
         self.visualization_pub = rospy.Publisher('/kakao_waypoints_viz', String, queue_size=1)  # 시각화 전용
         self.status_pub = rospy.Publisher('/kakao_navigation/status', String, queue_size=1)
         self.web_status_pub = rospy.Publisher('/kakao_navigation/web_status', String, queue_size=1)
-        
-        # Subscribers
-        rospy.Subscriber("/fused_odom", Odometry, self.fused_odom_callback)
-        rospy.Subscriber("/Odometry", Odometry, self.odometry_callback)
-        rospy.Subscriber("/robot_pose", PoseWithCovarianceStamped, self.robot_pose_callback)
+
+        # Subscribers (Global EKF 출력 사용)
+        rospy.Subscriber("/odometry/filtered/global", Odometry, self.global_odom_callback)
         rospy.Subscriber("/ublox/fix", NavSatFix, self.gps_callback)
         rospy.Subscriber("/move_base/status", GoalStatusArray, self.move_base_status_callback)
         
@@ -324,24 +322,34 @@ class KakaoNavigationSystem:
         return easting, northing
             
     def publish_waypoints_visualization(self):
-        """변환된 UTM 절대좌표 웨이포인트 시각화 발행"""
-        if not self.converted_waypoints_local:
+        """변환된 웨이포인트 시각화 발행 (UTM 원점 기준 상대 좌표)"""
+        if not self.converted_waypoints_local or not self.utm_origin_absolute:
             return
 
         waypoints_data = {
-            "frame": "map",  # UTM 절대좌표계
+            "frame": "map",  # map 프레임 (UTM 원점 기준)
             "coordinate_type": "kakao_navigation_route",
             "waypoints": [],
             "destination": self.destination_local,
             "total_waypoints": len(self.converted_waypoints_local),
             "current_waypoint": self.current_waypoint_index
         }
-        
+
+        # UTM 원점 정보
+        origin_e = float(self.utm_origin_absolute["easting"])
+        origin_n = float(self.utm_origin_absolute["northing"])
+
         for i, wp in enumerate(self.converted_waypoints_local):
+            # UTM 절대 좌표 → 원점 기준 상대 좌표로 변환
+            abs_x = float(wp["x"])
+            abs_y = float(wp["y"])
+            rel_x = abs_x - origin_e
+            rel_y = abs_y - origin_n
+
             waypoint_item = {
                 "index": i,
-                "x": float(wp["x"]),
-                "y": float(wp["y"]),
+                "x": rel_x,  # 상대 좌표
+                "y": rel_y,  # 상대 좌표
                 "original_gps": wp.get("original_gps", {}),
                 "completed": bool(i < self.current_waypoint_index),  # 명시적 bool() 변환
                 "is_current": bool(i == self.current_waypoint_index),  # 명시적 bool() 변환
@@ -602,19 +610,9 @@ class KakaoNavigationSystem:
         self.visualization_pub.publish(String(data=json.dumps(empty_data)))
         rospy.loginfo("🗑️ 기존 웨이포인트 시각화 제거 완료")
     
-    def fused_odom_callback(self, msg):
-        """주 위치 소스: /fused_odom"""
-        self.update_pose_local(msg.pose.pose, "fused_odom")
-        
-    def odometry_callback(self, msg):
-        """대안 위치 소스: /Odometry"""
-        if self.pose_source == "none" or self.is_pose_stale():
-            self.update_pose_local(msg.pose.pose, "Odometry")
-            
-    def robot_pose_callback(self, msg):
-        """추가 대안 위치 소스: /robot_pose"""
-        if self.pose_source == "none" or self.is_pose_stale():
-            self.update_pose_local(msg.pose.pose, "robot_pose")
+    def global_odom_callback(self, msg):
+        """Global EKF 출력: /odometry/filtered/global (map 프레임)"""
+        self.update_pose_local(msg.pose.pose, "global_ekf")
             
     def update_pose_local(self, pose, source):
         """로봇 위치 정보 업데이트 (map 프레임 기준)

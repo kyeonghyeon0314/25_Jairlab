@@ -33,7 +33,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:include filename="$(find ouster_description)/urdf/OS1-32.urdf.xacro"/>
   <xacro:OS1-32
     parent="top_chassis_link"
-    name="ouster"
+    name="os_sensor"
     topic_points="/ouster/points"
     topic_imu="/ouster/imu"
     hz="10"
@@ -42,8 +42,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
     min_range="0.1"
     max_range="50.0"
     noise="0.008"
-    lidar_link="os1_lidar"
-    imu_link="os1_imu"
+    lidar_link="os_lidar"
+    imu_link="os_imu"
     vfov_min="-.26"
     vfov_max=".26">
     <origin xyz="0.2 0 0.4" rpy="0 0 0"/>

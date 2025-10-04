@@ -6,7 +6,7 @@
   <arg name="port" default="$(optenv HUSKY_PORT /dev/ttyUSB0)" />
 
     <!-- Husky harware driver 실제 테스트때 활성화-->
-    <node pkg="husky_base" type="husky_node" name="husky_node">
+    <!-- <node pkg="husky_base" type="husky_node" name="husky_node">
         <rosparam subst_value="true">
             port: $(arg port)
 
@@ -18,7 +18,7 @@
             wheel_diameter: 0.3302
             polling_timeout: 10.0
         </rosparam>
-    </node>
+    </node> -->
   <arg name="config_extras" default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
 
   <!-- Load robot description -->
@@ -56,30 +56,30 @@
 
   <!-- ===== Localization (INS) ===== -->
   <!-- GPS 좌표를 UTM으로 변환 -->
-  <node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform" respawn="true">
+  <node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform" respawn="true" output="screen">
     <param name="magnetic_declination_radians" value="0"/>
     <param name="yaw_offset" value="0"/>
     <param name="zero_altitude" value="true"/>
-    <param name="broadcast_utm_transform" value="true"/>
+    <param name="broadcast_utm_transform" value="false"/>
     <param name="publish_filtered_gps" value="true"/>
     <param name="use_odometry_yaw" value="false"/>
     <param name="wait_for_datum" value="false"/>
     <param name="frequency" value="10"/>
 
-    <remap from="/imu/data" to="/ouster/imu"/>
-    <remap from="/gps/fix" to="/ublox/fix"/>
-    <remap from="odometry/filtered" to="/gps/fix/odometry"/>
+    <remap from="imu/data" to="/ouster/imu"/>
+    <remap from="gps/fix" to="/ublox/fix"/>
+    <remap from="odometry/filtered" to="/odometry/filtered/global"/>
+    <remap from="odometry/gps" to="/gps/fix/odometry"/>
   </node>
 
   <!-- EKF - Local (odom frame 기준, GPS 없이 wheel odom + IMU) -->
-  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_local" clear_params="true" respawn="true">
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_local" clear_params="true" respawn="true" output="screen">
     <rosparam command="load" file="$(find husky_dwa_navigation)/config/ekf_local.yaml"/>
     <remap from="odometry/filtered" to="/odometry/filtered/local"/>
-    <remap from="/imu/data" to="/ouster/imu"/>
   </node>
 
   <!-- EKF - Global (map frame 기준, GPS 융합) -->
-  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_global" clear_params="true" respawn="true">
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_global" clear_params="true" respawn="true" output="screen">
     <rosparam command="load" file="$(find husky_dwa_navigation)/config/ekf_global.yaml"/>
     <remap from="odometry/filtered" to="/odometry/filtered/global"/>
   </node>
@@ -129,8 +129,5 @@
     <param name="border_tolerance" value="1.0" />
   </node>
 
-  <!-- ===== RViz 시각화 ===== -->
-  <!-- <node name="rviz" pkg="rviz" type="rviz" 
-        args="-d $(find faster_lio)/rviz_cfg/loam_livox.rviz" 
-        output="screen" /> -->
+  
 </launch>

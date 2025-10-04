@@ -154,14 +154,14 @@ async def send_gps_data(websocket, path):
     """ WebSocket을 통해 웹 클라이언트로 GPS 데이터 전송 """
     client_info = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
     rospy.loginfo(f"📡 WebSocket GPS 클라이언트 연결: {client_info}")
-    
+
     try:
         while True:
             with data_lock:
                 # 실시간 GPS 우선, 없으면 기본 GPS 데이터
                 data_to_send = realtime_gps or latest_gps_data
                 current_system_status = system_status.copy()
-                
+
             if data_to_send:
                 # GPS 데이터에 시스템 상태 추가
                 enhanced_data = data_to_send.copy()
@@ -188,14 +188,13 @@ async def send_gps_data(websocket, path):
                     }
                 }
                 gps_data = json.dumps(fallback_data)
-                
+
             await websocket.send(gps_data)
-            rospy.loginfo_throttle(20, f"📡 WebSocket GPS 전송: {len(gps_data)} bytes → {client_info}")
-            
+
             await asyncio.sleep(1)
-            
+
     except websockets.exceptions.ConnectionClosed:
-        rospy.loginfo(f"📡 WebSocket GPS 클라이언트 연결 해제: {client_info}")
+        pass  # 정상적인 연결 해제, 로깅 불필요
     except Exception as e:
         rospy.logwarn(f"⚠️ WebSocket GPS 전송 오류 ({client_info}): {e}")
 
@@ -421,45 +420,41 @@ async def start_waypoints_websocket():
 # 📌 상태 모니터링 및 로깅
 # ---------------------------
 def status_monitor():
-    """시스템 상태 주기적 모니터링 및 진단"""
+    """시스템 상태 주기적 모니터링 및 진단 (중요한 이슈만 로깅)"""
     consecutive_errors = 0
-    
+    last_logged_issues = set()
+
     while not rospy.is_shutdown():
         try:
             with data_lock:
-                gps_available = latest_gps_data is not None
-                realtime_gps_available = realtime_gps is not None
                 utm_synced = utm_origin_absolute is not None
                 current_status = system_status.copy()
-            
-            # 상태 진단
-            issues = []
-            if not utm_synced:
-                issues.append("UTM 원점 미동기화")
-            if not current_status["fasterlio_active"]:
-                issues.append("FasterLIO 비활성")
-            if not current_status["gps_active"]:
-                issues.append("GPS 비활성")
-                
-            # 주기적 상태 로깅
-            if issues:
-                rospy.logwarn_throttle(60, f"⚠️ 시스템 이슈: {', '.join(issues)}")
-                consecutive_errors += 1
-            else:
-                if consecutive_errors > 0:
-                    rospy.loginfo("✅ 모든 시스템 이슈 해결됨")
+
+            # 상태 진단 (중요한 이슈만)
+            issues = set()
+            if not utm_synced and current_status["gps_active"]:
+                issues.add("UTM 원점 미동기화 (GPS는 활성)")
+
+            # 상태 변화가 있을 때만 로깅
+            if issues != last_logged_issues:
+                if issues:
+                    rospy.logwarn(f"⚠️ 시스템 이슈: {', '.join(issues)}")
+                    consecutive_errors += 1
+                else:
+                    if last_logged_issues:
+                        rospy.loginfo("✅ 모든 시스템 이슈 해결됨")
                     consecutive_errors = 0
-                rospy.loginfo_throttle(120, f"✅ 시스템 정상: GPS={gps_available}, UTM동기화={utm_synced}, 네비게이션={current_status['navigation_active']}")
-            
-            # 심각한 오류 시 경고
-            if consecutive_errors > 10:
-                rospy.logerr("❌ 심각한 시스템 문제 감지! 노드들을 재시작하는 것을 고려하세요.")
-                consecutive_errors = 0  # 스팸 방지
-                
+                last_logged_issues = issues
+
+            # 심각한 오류 시에만 경고 (10분 이상 지속)
+            if consecutive_errors > 40:
+                rospy.logerr("❌ 심각: GPS는 있지만 UTM 원점이 설정되지 않음 - GPS 토픽 확인 필요")
+                consecutive_errors = 0
+
         except Exception as e:
             rospy.logwarn(f"⚠️ 상태 모니터링 오류: {e}")
-            
-        time.sleep(15)  # 15초마다 체크
+
+        time.sleep(15)
 
 def system_info_publisher():
     """시스템 정보 주기적 발행"""
@@ -565,9 +560,26 @@ def publish_utm_origin_info():
     rospy.loginfo("📡 UTM 원점 정보 발행 완료")
 
 def gps_subscriber_callback(msg):
-    """GPS 구독자 콜백 - UTM 원점 설정용"""
+    """GPS 구독자 콜백 - UTM 원점 설정 및 웹 전송용"""
+    global latest_gps_data, system_status
+
     if msg.status.status >= 0:  # Valid GPS
+        # UTM 원점 설정
         setup_utm_origin_from_first_gps(msg)
+
+        # 웹 전송용 GPS 데이터 저장
+        try:
+            with data_lock:
+                latest_gps_data = {
+                    "latitude": msg.latitude,
+                    "longitude": msg.longitude,
+                    "altitude": msg.altitude,
+                    "status": msg.status.status
+                }
+                system_status["gps_active"] = True
+            rospy.loginfo_throttle(15, f"📡 GPS 데이터 수신: lat={msg.latitude:.6f}, lon={msg.longitude:.6f}")
+        except Exception as e:
+            rospy.logerr(f"❌ GPS 콜백 오류: {e}")
 
 # ---------------------------
 # 📌 메인 실행부
