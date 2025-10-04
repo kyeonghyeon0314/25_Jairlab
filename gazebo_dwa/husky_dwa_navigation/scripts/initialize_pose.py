@@ -679,7 +679,7 @@ class PoseInitializer:
                          if p["timestamp"] >= move_start_time]
 
         # move_front 시작 이후의 GPS 궤적 필터링 (고품질만)
-        MIN_GPS_QUALITY = 1  # RTK Float (1) 이상
+        MIN_GPS_QUALITY = 0  # RTK Float (1) 이상
         move_gps = [p for p in self.gps_trajectory_local
                    if p["timestamp"] >= move_start_time and p.get("status", 0) >= MIN_GPS_QUALITY]
 
