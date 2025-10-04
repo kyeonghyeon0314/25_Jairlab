@@ -91,18 +91,16 @@ class PathVisualizer:
             try:
                 lat, lon = msg.latitude, msg.longitude
                 
-                # GPS → UTM Local 변환
+                # GPS → UTM 절대좌표 변환 (Corrected Path와 동일한 좌표계)
                 if abs(lat) < 0.01 and abs(lon) < 0.01:
                     # 시뮬레이션 GPS
                     easting = lat * 111320.0
                     northing = lon * 111320.0
                 else:
                     easting, northing, _, _ = utm.from_latlon(lat, lon)
-                
-                local_x = easting - self.utm_origin_absolute["easting"]
-                local_y = northing - self.utm_origin_absolute["northing"]
-                
-                point = Point(x=local_x, y=local_y, z=0)
+
+                # ✨ 절대좌표 직접 사용 (Corrected Path와 동일한 영역에 표시)
+                point = Point(x=easting, y=northing, z=0)
                 
                 # 거리 기반 필터링 (1m 이상 이동시에만 기록)
                 if not self.gps_path or self.distance_check(point, self.gps_path[-1], 1.0):
