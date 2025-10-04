@@ -36,7 +36,6 @@ class NavigationManager:
         self.plan_failure_count = 0
         self.last_failure_time = rospy.Time(0)
         self.last_plan_failure_time = rospy.Time(0)  # 추가: last_plan_failure_time 초기화
-        self.failure_shift_direction = 1  # 1: 동쪽(오른쪽), -1: 서쪽(왼쪽)
         self.failure_shift_distance = 1.0  # 기본 이동 거리 (미터)
 
         # 추가: 최대 시도 횟수 제한
@@ -316,85 +315,81 @@ class NavigationManager:
 
     def shift_intermediate_goal(self):
         """
-        장애물로 인해 경로 생성이 실패할 때 중간 목표 지점을 측면으로 이동시킨다.
+        장애물로 인해 경로 생성이 실패할 때 중간 목표 지점을 로봇 쪽으로 당긴다.
         """
         if not self.have_costmap or self.current_goal is None:
             return
-        
+
         # 최대 시도 횟수 확인
         if self.current_shift_attempts >= self.max_shift_attempts:
             rospy.logwarn("최대 %d번 중간 목표 이동 시도했으나 실패. 더 멀리 떨어진 중간 목표를 시도합니다.", self.max_shift_attempts)
             self.reset_and_try_further_goal()
             return
-    
+
         # 현재 로봇 위치 가져오기
         robot_pose = self.get_robot_pose()
         if robot_pose is None:
             return
-    
+
         try:
             # 현재 중간 목표 위치
             current_intermediate_x = self.current_goal.pose.position.x
             current_intermediate_y = self.current_goal.pose.position.y
-        
+
             # 로봇에서 현재 중간 목표까지의 방향 벡터
             intermediate_direction_x = current_intermediate_x - robot_pose.x
             intermediate_direction_y = current_intermediate_y - robot_pose.y
-        
+
             # 벡터 정규화
             direction_length = np.sqrt(intermediate_direction_x**2 + intermediate_direction_y**2)
             if direction_length > 0:
                 intermediate_direction_x /= direction_length
                 intermediate_direction_y /= direction_length
-        
-            # 현재 진행 방향에 수직인 벡터 계산
-            perpendicular_x = -intermediate_direction_y  # 오른쪽 방향
-            perpendicular_y = intermediate_direction_x   # 위쪽 방향
-        
-            # 이동 거리 계산 - 점진적으로 증가
-            if self.increasing_shift_distance and self.current_shift_attempts % 2 == 0:
-                self.shift_multiplier *= 1.5  # 방향 전환 시마다 1.5배 증가
-        
+
+            # 로봇 방향으로 당기는 벡터 계산 (기존 방향의 반대)
+            pull_back_direction_x = -intermediate_direction_x  # 로봇 쪽으로
+            pull_back_direction_y = -intermediate_direction_y
+
+            # 이동 거리 계산 - 매 시도마다 점진적 증가
+            self.shift_multiplier *= 1.3  # 1.3배씩 증가 (1m → 1.3m → 1.69m → 2.2m...)
+
             shift_distance = self.base_shift_distance * self.shift_multiplier
-        
-            # 새 중간 목표 위치 계산
-            new_intermediate_x = current_intermediate_x + perpendicular_x * shift_distance * self.failure_shift_direction
-            new_intermediate_y = current_intermediate_y + perpendicular_y * shift_distance * self.failure_shift_direction
-        
+
+            # 새 중간 목표 위치 계산 (로봇 쪽으로 당김)
+            new_intermediate_x = current_intermediate_x + pull_back_direction_x * shift_distance
+            new_intermediate_y = current_intermediate_y + pull_back_direction_y * shift_distance
+
             # 새 중간 목표 생성
             intermediate_goal = PoseStamped()
             intermediate_goal.header.frame_id = self.costmap.header.frame_id
             intermediate_goal.header.stamp = rospy.Time.now()
             intermediate_goal.pose.position.x = new_intermediate_x
             intermediate_goal.pose.position.y = new_intermediate_y
-            
+
             # 중간 목표 식별을 위한 특수 z 값 설정
             intermediate_goal.pose.position.z = self.INTERMEDIATE_GOAL_Z
-            
+
             # 방향은 기존 중간 목표와 동일하게 유지
             intermediate_goal.pose.orientation = self.current_goal.pose.orientation
-        
-            # GlobalPlanner 사용 확인 
+
+            # GlobalPlanner 사용 확인
             if not self.using_default_planner:
                 self.switch_planner(self.default_planner)
                 self.using_default_planner = True
-        
+
             # 중간 목표 발행
             self.intermediate_goal_pub.publish(intermediate_goal)
             self.last_intermediate_goal_time = rospy.Time.now()
 
             # 시도 횟수 증가
             self.current_shift_attempts += 1
-        
-            # 다음 번 실패 시 반대 방향으로 시도하기 위해 방향 전환
-            self.failure_shift_direction *= -1
-        
-            rospy.loginfo("장애물 회피를 위해 중간 목표 이동 (%d/%d): (%.2f, %.2f) -> (%.2f, %.2f), 이동거리: %.2fm", 
+
+            rospy.loginfo("장애물 회피: 중간 목표를 로봇 쪽으로 당김 (%d/%d): (%.2f, %.2f) -> (%.2f, %.2f), 후퇴거리: %.2fm",
                      self.current_shift_attempts, self.max_shift_attempts,
                      current_intermediate_x, current_intermediate_y,
                      new_intermediate_x, new_intermediate_y,
                      shift_distance)
-    
+
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
                 rospy.logwarn("목표 지점 변환 중 오류: %s", str(e))
 
