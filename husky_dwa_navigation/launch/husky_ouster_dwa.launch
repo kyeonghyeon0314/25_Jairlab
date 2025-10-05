@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- 가제보 환경과 휴스키 로봇 실행 -->
+  <include file="$(find husky_custom_gazebo)/launch/husky_ouster.launch"/>
+
+  <!-- 포인트 클라우드 처리 파이프라인 -->
+  <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" />
+  
+  <!-- 벨로다인 데이터 다운샘플링을 위한 VoxelGrid 필터 -->
+  <node pkg="nodelet" type="nodelet" name="voxel_grid" args="load pcl/VoxelGrid pcl_manager" output="screen">
+    <remap from="~input" to="/os1/points" />
+    <remap from="~output" to="/velodyne_points_filtered" />
+    <param name="leaf_size" value="0.10" />
+    <param name="filter_field_name" value="z" />
+    <param name="filter_limit_min" value="-0.5" />
+    <param name="filter_limit_max" value="2.0" />
+  </node>
+  <!-- 추가: PointCloud2를 LaserScan으로 변환 -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+    <remap from="cloud_in" to="/velodyne_points_filtered"/>
+    <remap from="scan" to="/velodyne_scan"/>
+    <param name="angle_min" value="-3.14159"/>
+    <param name="angle_max" value="3.14159"/>
+    <param name="min_height" value="-0.7"/>
+    <param name="max_height" value="2"/>
+    <param name="angle_increment" value="0.01"/>
+  </node>
+
+  <!-- Move Base 네비게이션 스택 사용 -->
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find husky_dwa_navigation)/config/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/move_base_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/dwa_local_planner_params.yaml" command="load" />
+    
+    <param name="clearing_rotation_allowed" value="true" />
+    <param name="conservative_clear_costmap" value="true" />
+    <param name="recovery_behavior_enabled" value="true" />
+
+    <param name="controller_patience" value="15.0" />
+    <param name="planner_patience" value="5.0" />
+    <param name="oscillation_timeout" value="10.0" />
+    <param name="oscillation_distance" value="0.5" />
+
+    <!-- 로컬 플래너 설정 -->
+    <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
+
+    <!-- 기본 글로벌 플래너 설정 -->
+    <param name="base_global_planner" value="global_planner/GlobalPlanner" />
+
+    <!-- 플래너 빈도 설정 -->
+    <param name="controller_frequency" value="10.0" />
+    <param name="planner_frequency" value="5.0" />
+
+    <!-- GlobalPlanner 파라미터 -->
+    <param name="GlobalPlanner/allow_unknown" value="true" />
+    <param name="GlobalPlanner/use_dijkstra" value="true" />
+    <param name="GlobalPlanner/use_quadratic" value="true" />
+    <param name="GlobalPlanner/use_grid_path" value="false" />
+    <param name="GlobalPlanner/old_navfn_behavior" value="false" />
+  </node>
+
+
+  <!-- 글로벌 플래너 전환 모니터링 - 직접 husky_dwa_navigation 패키지의 스크립트 실행 -->
+  <node pkg="husky_dwa_navigation" type="navigation_manager_node.py" name="navigation_manager" output="screen">
+    <param name="global_costmap_topic" value="/move_base/global_costmap/costmap" />
+    <param name="robot_base_frame" value="base_link" />
+    <param name="switch_service" value="/move_base/set_parameters" />
+    <param name="planner_type_parameter" value="/move_base/base_global_planner" />
+    <param name="default_planner" value="global_planner/GlobalPlanner" />
+    <param name="check_frequency" value="5.0" />
+    <param name="border_tolerance" value="1.0" />
+  </node>
+  
+</launch>

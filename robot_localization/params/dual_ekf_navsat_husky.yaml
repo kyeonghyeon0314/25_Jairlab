@@ -1,0 +1,178 @@
+# Husky Dual EKF + Navsat Configuration
+# Based on robot_localization dual_ekf_navsat_example.yaml
+# Customized for Husky with Ouster LiDAR IMU and Ublox GPS
+
+ekf_se_odom:
+  frequency: 50
+  sensor_timeout: 0.2
+  two_d_mode: true
+  transform_time_offset: 0.1
+  transform_timeout: 0.0
+  print_diagnostics: false
+  debug: false
+  publish_tf: true
+  permit_corrected_publication: false
+
+  map_frame: map
+  odom_frame: odom
+  base_link_frame: base_link
+  world_frame: odom
+
+  # Wheel Odometry (linear velocity only, no yaw)
+  odom0: husky_velocity_controller/odom
+  odom0_config: [true,  true,  false,
+                 false, false, false,
+                 false,  false,  false,
+                 false, false, false,
+                 false, false, false]
+  odom0_queue_size: 10
+  odom0_nodelay: true
+  odom0_differential: false
+  odom0_relative: false
+
+  # IMU (Ouster) - angular velocity only (orientation covariance is -1)
+  imu0: /ouster/imu
+  imu0_config: [false, false, false,
+                false, false, false,
+                false, false, false,
+                false, false, true,
+                false, false, false]
+  imu0_nodelay: false
+  imu0_differential: false
+  imu0_relative: false
+  imu0_queue_size: 10
+  imu0_remove_gravitational_acceleration: true
+
+  use_control: false
+
+  process_noise_covariance: [0.05, 0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0.05, 0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0.06, 0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0.03, 0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0.03, 0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0.06, 0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0.025, 0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0.025, 0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0.04, 0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0.01, 0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0.01, 0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0.02, 0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0.01, 0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0.01, 0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0.015]
+
+  initial_estimate_covariance: [1e-9, 0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    1e-9, 0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    1e-9, 0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    1e-9, 0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    1e-9, 0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    1e-9, 0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    1e-9, 0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    1e-9, 0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    1e-9, 0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    1e-9,  0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     1e-9,  0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     1e-9,  0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     1e-9, 0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    1e-9, 0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    1e-9]
+
+ekf_se_map:
+  frequency: 50
+  sensor_timeout: 0.5
+  two_d_mode: true
+  transform_time_offset: 0.1
+  transform_timeout: 0.0
+  print_diagnostics: false
+  debug: false
+  publish_tf: true
+  permit_corrected_publication: false
+
+  map_frame: map
+  odom_frame: odom
+  base_link_frame: base_link
+  world_frame: map
+
+  # Wheel Odometry (linear velocity only, no rotation)
+  odom0: husky_velocity_controller/odom
+  odom0_config: [false, false, false,
+                 false, false, false,
+                 true,  true,  false,
+                 false, false, false,
+                 false, false, false]
+  odom0_queue_size: 10
+  odom0_nodelay: true
+  odom0_differential: false
+  odom0_relative: false
+
+  # GPS Odometry (from navsat_transform)
+  odom1: odometry/gps
+  odom1_config: [true,  true,  false,
+                 false, false, false,
+                 false, false, false,
+                 false, false, false,
+                 false, false, false]
+  odom1_queue_size: 10
+  odom1_nodelay: true
+  odom1_differential: false
+  odom1_relative: false
+
+  # IMU (Ouster) - angular velocity only (orientation not available)
+  imu0: /ouster/imu
+  imu0_config: [false, false, false,
+                false, false, false,
+                false, false, false,
+                false, false, true,
+                false, false, false]
+  imu0_nodelay: true
+  imu0_differential: false
+  imu0_relative: false
+  imu0_queue_size: 10
+  imu0_remove_gravitational_acceleration: true
+
+  use_control: false
+
+  process_noise_covariance: [0.05, 0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0.05, 0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0.06, 0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0.03, 0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0.03, 0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0.06, 0,     0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0.025, 0,     0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0.025, 0,    0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0.04, 0,    0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0.01, 0,    0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0.01, 0,    0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0.02, 0,    0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0.01, 0,    0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0.01, 0,
+                             0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0.015]
+
+  initial_estimate_covariance: [1e-9, 0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    1e-9, 0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    1e-9, 0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    1e-9, 0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    1e-9, 0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    1e-9, 0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    1e-9, 0,    0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    1e-9, 0,    0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    1e-9, 0,     0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    1e-9,  0,     0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     1e-9,  0,     0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     1e-9,  0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     1e-9, 0,    0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    1e-9, 0,
+                                0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    1e-9]
+
+navsat_transform:
+  frequency: 50
+  delay: 3.0
+  magnetic_declination_radians: 0.0
+  yaw_offset: 0.0
+  zero_altitude: true
+  broadcast_utm_transform: false
+  publish_filtered_gps: true
+  use_odometry_yaw: false
+  wait_for_datum: false
+  base_link_frame_id: base_link
+  world_frame_id: map
