@@ -29,10 +29,10 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 
   <!-- Insert customization below, sample provided: -->
 
-  <!-- 2) OS1-64 LiDAR 모델 포함 -->
+  <!-- 2) OS1-32 LiDAR 모델 포함 -->
   <xacro:include filename="$(find ouster_description)/urdf/OS1-32.urdf.xacro"/>
   <xacro:OS1-32
-    parent="top_chassis_link"
+    parent="top_plate_link"
     name="os_sensor"
     topic_points="/ouster/points"
     topic_imu="/ouster/imu"
