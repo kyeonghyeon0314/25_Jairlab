@@ -31,8 +31,4 @@
     <param name="broadcast_cartesian_transform" value="false"/>
   </node>
 
-  <!-- GPS 프레임을 base_link로 설정 (URDF에 GPS 링크 없으므로) -->
-  <node pkg="tf" type="static_transform_publisher" name="gps_to_base_link"
-        args="0 0 0.3 0 0 0 base_link gps 100"/>
-
 </launch>

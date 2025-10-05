@@ -1,0 +1,134 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- ================================================== -->
+  <!-- 통합 자율주행 네비게이션 시스템 -->
+  <!-- Husky Hardware + Localization + Navigation + Web Interface -->
+  <!-- ================================================== -->
+
+  <param name="use_sim_time" value="true" />
+  <arg name="config_extras" default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
+
+  <arg name="port" default="$(optenv HUSKY_PORT /dev/ttyUSB0)" />
+  <arg name="robot_namespace" default="/"/>
+
+  <!-- Load Custom Robot Description (Ouster + GPS) -->
+  <param name="robot_description" command="$(find xacro)/xacro '$(find husky_custom_description)/urdf/custom_description_ouster_gps.urdf.xacro'
+    robot_namespace:=$(arg robot_namespace)" />
+
+    <!-- Husky harware driver -->
+    <node pkg="husky_base" type="husky_node" name="husky_node">
+        <rosparam subst_value="true">
+            port: $(arg port)
+
+            control_frequency: 10.0
+            diagnostic_frequency: 1.0
+
+            max_acceleration: 3.0
+            max_speed: 1.0
+            wheel_diameter: 0.3302
+            polling_timeout: 10.0
+        </rosparam>
+    </node>
+
+    <!-- Differential controller parameters (EKF disabled - using dual_ekf_navsat instead) -->
+    <include file="$(find husky_control)/launch/control.launch">
+      <arg name="enable_ekf" value="false"/>
+    </include>
+
+    <!--Teleop -->
+    <include file="$(find husky_control)/launch/teleop.launch" />
+
+    <!-- Diagnostic Aggregator -->
+    <node pkg="diagnostic_aggregator" type="aggregator_node" name="diagnostic_aggregator">
+        <rosparam command="load" file="$(find husky_base)/config/diagnostics.yaml"/>
+    </node>
+
+  <rosparam command="load" file="$(arg config_extras)" subst_value="true" />
+
+  <!-- ================================================== -->
+  <!-- 2. Localization Pipeline (GPS + IMU + Wheel) -->
+  <!-- ================================================== -->
+  <include file="$(find robot_localization)/launch/dual_ekf_navsat_husky.launch"/>
+
+  <!-- ================================================== -->
+  <!-- 3. Sensor Processing Pipeline -->
+  <!-- ================================================== -->
+
+  <!-- PCL Manager -->
+  <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" />
+
+  <!-- Ouster PointCloud downsampling -->
+  <node pkg="nodelet" type="nodelet" name="voxel_grid" args="load pcl/VoxelGrid pcl_manager" output="screen">
+    <remap from="~input" to="/ouster/points" />
+    <remap from="~output" to="/points_filtered" />
+    <param name="leaf_size" value="0.10" />
+    <param name="filter_field_name" value="z" />
+    <param name="filter_limit_min" value="-0.13" />
+    <param name="filter_limit_max" value="2" />
+  </node>
+
+  <!-- PointCloud2 → LaserScan 변환 -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+    <remap from="cloud_in" to="/points_filtered"/>
+    <remap from="scan" to="/scan"/>
+    <param name="angle_min" value="-3.14159"/>
+    <param name="angle_max" value="3.14159"/>
+    <param name="min_height" value="-2"/>
+    <param name="max_height" value="3"/>
+    <param name="angle_increment" value="0.01"/>
+  </node>
+
+  <!-- ================================================== -->
+  <!-- 4. Navigation (DWA + Move Base) -->
+  <!-- ================================================== -->
+
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <!-- TF Transform 설정 -->
+    <param name="transform_tolerance" value="1.0"/>
+
+    <!-- Costmap 설정 -->
+    <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find husky_dwa_navigation)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find husky_dwa_navigation)/config/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/robot_dynamics_params.yaml" command="load" />
+    <rosparam file="$(find husky_dwa_navigation)/config/path_planning_params.yaml" command="load" />
+  </node>
+
+  <!-- Navigation Manager -->
+  <node pkg="husky_dwa_navigation" type="navigation_manager.py" name="navigation_manager" output="screen">
+    <param name="global_costmap_topic" value="/move_base/global_costmap/costmap" />
+    <param name="robot_base_frame" value="base_link" />
+    <param name="switch_service" value="/move_base/set_parameters" />
+    <param name="planner_type_parameter" value="/move_base/base_global_planner" />
+    <param name="default_planner" value="global_planner/GlobalPlanner" />
+    <param name="check_frequency" value="5.0" />
+    <param name="border_tolerance" value="1.0" />
+  </node>
+
+  <!-- ================================================== -->
+  <!-- 5. Web Interface & Waypoint Management -->
+  <!-- ================================================== -->
+
+  <!-- Path Visualizer (경로 시각화) -->
+  <node pkg="husky_dwa_navigation" type="path_visualizer.py" name="path_visualizer_node" output="screen"/>
+
+  <!-- GPS Server (웹 인터페이스) -->
+  <node pkg="husky_dwa_navigation" type="gps_server.py" name="gps_server_node" output="screen">
+    <param name="port" value="8000" />
+    <param name="websocket_port" value="8765" />
+    <param name="waypoints_websocket_port" value="8766" />
+  </node>
+
+  <!-- Waypoints Manager (자율주행) -->
+  <node pkg="husky_dwa_navigation" type="waypoints_manager.py" name="waypoint_manager_node" output="screen"/>
+
+  <!-- ================================================== -->
+  <!-- 6. Visualization (RViz) -->
+  <!-- ================================================== -->
+  <!-- ===== RViz 시각화 ===== -->
+  <node name="rviz" pkg="rviz" type="rviz"
+        args="-d $(find husky_dwa_navigation)/ins_rviz.rviz"
+        output="screen" />   
+
+</launch>

@@ -29,11 +29,11 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 
   <!-- Insert customization below, sample provided: -->
 
-  <!-- 2) OS1-32 LiDAR 모델 포함 -->
+  <!-- 2) OS1-64 LiDAR 모델 포함 -->
   <xacro:include filename="$(find ouster_description)/urdf/OS1-32.urdf.xacro"/>
   <xacro:OS1-32
-    parent="top_plate_link"
-    name="os_sensor"
+    parent="top_chassis_link"
+    name="ouster"
     topic_points="/ouster/points"
     topic_imu="/ouster/imu"
     hz="10"
@@ -42,7 +42,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
     min_range="0.1"
     max_range="50.0"
     noise="0.008"
-    lidar_link="os_lidar"
+    lidar_link="os_sensor"
     imu_link="os_imu"
     vfov_min="-.26"
     vfov_max=".26">
@@ -51,8 +51,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 
    <!-- GPS 추가-->
   <!-- GPS 센서 포함 -->
-  <!-- <xacro:include filename="$(find husky_custom_description)/urdf/gps_sensor.urdf.xacro"/> -->
+  <xacro:include filename="$(find husky_custom_description)/urdf/gps_sensor.urdf.xacro"/>
   
   <!-- Gazebo 플러그인 포함 -->
-  <!-- <xacro:include filename="$(find husky_custom_gazebo)/urdf/custom_description.gazebo.xacro"/> -->
+  <xacro:include filename="$(find husky_custom_gazebo)/urdf/custom_description.gazebo.xacro"/>
 </robot>

@@ -123,6 +123,7 @@
       <robotNamespace>/</robotNamespace>
       <updateRate>100.0</updateRate>
       <bodyName>${imu_link}</bodyName>
+      <frameId>${imu_link}</frameId>
       <topicName>${topic_imu}</topicName>
       <accelDrift>0.005 0.005 0.005</accelDrift>
       <accelGaussianNoise>0.005 0.005 0.005</accelGaussianNoise>
@@ -130,6 +131,9 @@
       <rateGaussianNoise>0.005 0.005 0.005 </rateGaussianNoise>
       <headingDrift>0.005</headingDrift>
       <headingGaussianNoise>0.005</headingGaussianNoise>
+      <!-- Disable orientation output (real Ouster IMU doesn't provide orientation) -->
+      <rpyOffsets>0 0 0</rpyOffsets>
+      <gaussianNoise>0 0 0</gaussianNoise>
     </plugin>
   </gazebo>
 
