@@ -1,0 +1,38 @@
+<!--
+  Husky Dual EKF + Navsat Launch File
+  Based on robot_localization dual_ekf_navsat_example.launch
+
+  This launch file runs:
+    (1) EKF odom: Fuses wheel odometry and IMU angular velocity (odom frame)
+    (2) EKF map: Fuses wheel odometry, IMU, and GPS (map frame)
+    (3) navsat_transform: Converts GPS to odometry for EKF map
+-->
+
+<launch>
+
+  <rosparam command="load" file="$(find robot_localization)/params/dual_ekf_navsat_husky.yaml" />
+
+  <!-- Local EKF (odom frame) -->
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_se_odom" clear_params="true"/>
+
+  <!-- Global EKF (map frame) -->
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_se_map" clear_params="true">
+    <remap from="odometry/filtered" to="odometry/filtered/global"/>
+  </node>
+
+  <!-- GPS to Odometry converter -->
+  <node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform" clear_params="true" output="screen">
+    <remap from="imu" to="/ouster/imu"/>
+    <remap from="gps/fix" to="/ublox/fix"/>
+    <remap from="odometry/filtered" to="odometry/filtered/global"/>
+    <remap from="odometry/gps" to="odometry/gps"/>
+
+    <!-- GPS 센서가 base_link에 있다고 가정 (URDF에 GPS 링크 없음) -->
+    <param name="broadcast_cartesian_transform" value="false"/>
+  </node>
+
+  <!-- GPS 프레임을 base_link로 설정 (URDF에 GPS 링크 없으므로) -->
+  <node pkg="tf" type="static_transform_publisher" name="gps_to_base_link"
+        args="0 0 0.3 0 0 0 base_link gps 100"/>
+
+</launch>
