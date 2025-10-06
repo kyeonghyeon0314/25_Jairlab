@@ -17,8 +17,11 @@
   </include> -->
 
   <!-- Load robot description -->
-  <include file="$(find husky_description)/launch/description.launch" >
-  </include>
+  <!-- <include file="$(find husky_description)/launch/description.launch" >
+    
+  </include> -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find husky_custom_description)/urdf/custom_description_ouster_gps.urdf.xacro'
+    robot_namespace:=$(arg robot_namespace)" />
 
   <!-- Load controller configuration -->
   <rosparam command="load" file="$(find husky_control)/config/control.yaml" />

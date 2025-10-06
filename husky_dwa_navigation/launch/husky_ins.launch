@@ -16,7 +16,7 @@
     robot_namespace:=$(arg robot_namespace)" />
 
     <!-- Husky harware driver -->
-    <!-- <node pkg="husky_base" type="husky_node" name="husky_node">
+    <node pkg="husky_base" type="husky_node" name="husky_node">
         <rosparam subst_value="true">
             port: $(arg port)
 
@@ -28,7 +28,7 @@
             wheel_diameter: 0.3302
             polling_timeout: 10.0
         </rosparam>
-    </node> -->
+    </node>
 
     <!-- Differential controller parameters (EKF disabled - using dual_ekf_navsat instead) -->
     <include file="$(find husky_control)/launch/control.launch">
@@ -114,14 +114,15 @@
   <node pkg="husky_dwa_navigation" type="path_visualizer.py" name="path_visualizer_node" output="screen"/>
 
   <!-- GPS Server (웹 인터페이스) -->
-  <!-- <node pkg="husky_dwa_navigation" type="gps_server.py" name="gps_server_node" output="screen">
+  <node pkg="husky_dwa_navigation" type="gps_server.py" name="gps_server" output="screen">
     <param name="port" value="8000" />
     <param name="websocket_port" value="8765" />
     <param name="waypoints_websocket_port" value="8766" />
-  </node> -->
+  </node>
 
   <!-- Waypoints Manager (자율주행) -->
-  <!-- <node pkg="husky_dwa_navigation" type="waypoints_manager.py" name="waypoint_manager_node" output="screen"/> -->
+  <node pkg="husky_dwa_navigation" type="waypoints_manager.py" name="waypoint_manager_node" output="screen"/>
+
 
   <!-- ================================================== -->
   <!-- 6. Visualization (RViz) -->
