@@ -5,7 +5,7 @@
   <!-- Husky Hardware + Localization + Navigation + Web Interface -->
   <!-- ================================================== -->
 
-  <param name="use_sim_time" value="true" />
+  <param name="use_sim_time" value="false" />
   <arg name="config_extras" default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
 
   <arg name="port" default="$(optenv HUSKY_PORT /dev/ttyUSB0)" />
